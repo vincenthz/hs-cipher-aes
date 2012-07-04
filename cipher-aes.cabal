@@ -1,0 +1,74 @@
+Name:                cipher-aes
+Version:             0.1.0
+Description:         Fast AES cipher implementation with advanced mode of operations
+License:             BSD3
+License-file:        LICENSE
+Copyright:           Vincent Hanquez <vincent@snarc.org>
+Author:              Vincent Hanquez <vincent@snarc.org>
+Maintainer:          Vincent Hanquez <vincent@snarc.org>
+Synopsis:            Fast AES cipher implementation with advanced mode of operations
+Category:            Cryptography
+Build-Type:          Simple
+Homepage:            http://github.com/vincenthz/hs-cipher-aes
+Cabal-Version:       >=1.8
+Extra-Source-Files:  Tests/*.hs
+                     cbits/*.h
+
+Flag benchmark
+  Description:       Build benchmarks
+  Default:           False
+
+Library
+  Build-Depends:     base >= 4 && < 5
+                   , bytestring
+                   , ghc-prim
+                   , primitive
+                   , crypto-api >= 0.5
+                   , tagged
+                   , cereal
+  Exposed-modules:   Crypto.Cipher.AES
+  ghc-options:       -Wall
+  C-sources:         cbits/aes_generic.c
+                     cbits/aes.c
+                     cbits/gf.c
+                     cbits/aes_x86ni.c
+                     cbits/cpu.c
+  if arch(i386) || arch(x86_64)
+    CC-options:      -mssse3 -maes -mpclmul
+
+Test-Suite test-cipher-aes
+  type:              exitcode-stdio-1.0
+  hs-source-dirs:    Tests
+  Main-Is:           Tests.hs
+  Build-depends:     base >= 4 && < 5
+                   , crypto-api >= 0.5
+                   , cipher-aes
+                   , bytestring
+                   , QuickCheck >= 2
+                   , test-framework >= 0.3.3 && < 0.7
+                   , test-framework-quickcheck2 >= 0.2.9 && < 0.3
+
+Executable           Benchmarks
+  hs-source-dirs:    Benchmarks
+  Main-Is:           Benchmarks.hs
+  if flag(benchmark)
+    Buildable:       True
+    Build-depends:   base >= 4 && < 5
+                   , bytestring
+                   , crypto-api
+                   , cipher-aes
+                   , criterion
+                   , mtl
+  else
+    Buildable:       False
+  C-sources:         cbits/aes_generic.c
+                     cbits/aes.c
+                     cbits/gf.c
+                     cbits/aes_x86ni.c
+                     cbits/cpu.c
+  if arch(i386) || arch(x86_64)
+    CC-options:      -mssse3 -maes -mpclmul
+
+source-repository head
+  type:     git
+  location: git://github.com/vincenthz/hs-cipher-aes
