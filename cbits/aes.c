@@ -146,10 +146,8 @@ void aes_decrypt_cbc(uint8_t *output, aes_key *key, aes_block *ivini, uint8_t *i
 
 		aes_decrypt_block(&blocko, key, &block);
 
-		block128_xor(&blocko, &iv);
+		block128_vxor((block128 *) output, &blocko, &iv);
 		block128_copy(&iv, &block);
-
-		block128_copy((block128 *) output, &blocko);
 	}
 }
 
@@ -179,8 +177,7 @@ void aes_encrypt_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *inpu
 
 	for ( ; nb_blocks-- > 0; block128_inc_be(&block), output += 16, input += 16) {
 		aes_encrypt_block(&o, key, &block);
-		((uint64_t *) output)[0] = o.q[0] ^ ((uint64_t *) input)[0];
-		((uint64_t *) output)[1] = o.q[1] ^ ((uint64_t *) input)[1];
+		block128_vxor((block128 *) output, &o, (block128 *) input);
 	}
 
 	if ((len % 16) != 0) {
@@ -217,13 +214,9 @@ void aes_encrypt_xts(uint8_t *output, aes_key *k1, aes_key *k2, aes_block *datau
 		gf_mulx(&tweak);
 
 	for ( ; nb_blocks-- > 0; input += 16, output += 16, gf_mulx(&tweak)) {
-		block128_copy(&block, (block128 *) input);
-
-		block128_xor(&block, &tweak);
+		block128_vxor(&block, (block128 *) input, &tweak);
 		aes_encrypt_block(&block, k1, &block);
-		block128_xor(&block, &tweak);
-
-		block128_copy((block128 *) output, &block);
+		block128_vxor((block128 *) output, &block, &tweak);
 	}
 }
 
@@ -244,13 +237,9 @@ void aes_decrypt_xts(uint8_t *output, aes_key *k1, aes_key *k2, aes_block *datau
 		gf_mulx(&tweak);
 
 	for ( ; nb_blocks-- > 0; input += 16, output += 16, gf_mulx(&tweak)) {
-		block128_copy(&block, (block128 *) input);
-
-		block128_xor(&block, &tweak);
+		block128_vxor(&block, (block128 *) input, &tweak);
 		aes_decrypt_block(&block, k1, &block);
-		block128_xor(&block, &tweak);
-
-		block128_copy((block128 *) output, &block);
+		block128_vxor((block128 *) output, &block, &tweak);
 	}
 }
 
