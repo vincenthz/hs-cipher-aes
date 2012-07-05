@@ -62,6 +62,12 @@ static inline void block128_xor(block128 *d, block128 *s)
 	d->q[1] ^= s->q[1];
 }
 
+static inline void block128_vxor(block128 *d, block128 *s1, block128 *s2)
+{
+	d->q[0] = s1->q[0] ^ s2->q[0];
+	d->q[1] = s1->q[1] ^ s2->q[1];
+}
+
 static inline void block128_xor_bytes(block128 *block, uint8_t *src, uint32_t len)
 {
 	int i;
