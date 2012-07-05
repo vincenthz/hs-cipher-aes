@@ -108,16 +108,6 @@ void aes_decrypt_ecb(uint8_t *output, aes_key *key, uint8_t *input, uint32_t nb_
 	}
 }
 
-void print_block(char *label, uint8_t *data)
-{
-	int i;
-	printf("%s: ", label);
-	for (i = 0; i < 16; i++) {
-		printf("%02x ", data[i]);
-	}
-	printf("\n");
-}
-
 void aes_encrypt_cbc(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *input, uint32_t nb_blocks)
 {
 	aes_block block;
