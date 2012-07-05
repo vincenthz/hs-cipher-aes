@@ -145,8 +145,7 @@ void aes_decrypt_cbc(uint8_t *output, aes_key *key, aes_block *ivini, uint8_t *i
 #endif
 
 	/* preload IV in block */
-	iv.q[0] = ivini->q[0];
-	iv.q[1] = ivini->q[1];
+	block128_copy(&iv, ivini);
 
 	aes_decrypt_block(&block, key, &block);
 
@@ -169,8 +168,7 @@ void aes_gen_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint32_t nb_block
 	if (!nb_blocks)
 		return;
 	/* preload IV in block */
-	block.q[0] = iv->q[0];
-	block.q[1] = iv->q[1];
+	block128_copy(&block, iv);
 
 	for ( ; nb_blocks-- > 0; output += 16, block128_inc_be(&block)) {
 		aes_encrypt_block(&o, key, &block);
@@ -185,8 +183,7 @@ void aes_encrypt_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *inpu
 	int i;
 
 	/* preload IV in block */
-	block.q[0] = iv->q[0];
-	block.q[1] = iv->q[1];
+	block128_copy(&block, iv);
 
 	for ( ; nb_blocks-- > 0; block128_inc_be(&block), output += 16, input += 16) {
 		aes_encrypt_block(&o, key, &block);
