@@ -150,7 +150,7 @@ void aes_decrypt_cbc(uint8_t *output, aes_key *key, aes_block *ivini, uint8_t *i
 
 	aes_decrypt_block(&block, key, &block);
 
-	while (nb_blocks-- > 0) {
+	for ( ;nb_blocks-- > 0; input += 16, output += 16) {
 		block128_copy(&block, (block128 *) input);
 
 		aes_decrypt_block(&blocko, key, &block);
@@ -159,8 +159,6 @@ void aes_decrypt_cbc(uint8_t *output, aes_key *key, aes_block *ivini, uint8_t *i
 		block128_copy(&iv, &block);
 
 		block128_copy((block128 *) output, &blocko);
-		input += 16;
-		output += 16;
 	}
 }
 
