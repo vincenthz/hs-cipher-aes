@@ -153,7 +153,7 @@ void aes_decrypt_cbc(uint8_t *output, aes_key *key, aes_block *ivini, uint8_t *i
 
 void aes_gen_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint32_t nb_blocks)
 {
-	aes_block block, o;
+	aes_block block;
 
 	if (!nb_blocks)
 		return;
@@ -161,8 +161,7 @@ void aes_gen_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint32_t nb_block
 	block128_copy(&block, iv);
 
 	for ( ; nb_blocks-- > 0; output += 16, block128_inc_be(&block)) {
-		aes_encrypt_block(&o, key, &block);
-		block128_copy((block128 *) output, &o);
+		aes_encrypt_block((block128 *) output, key, &block);
 	}
 }
 
