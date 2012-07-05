@@ -72,8 +72,6 @@ void aes_initkey(aes_key *key, uint8_t *origkey, uint8_t size)
 
 void aes_encrypt_ecb(uint8_t *output, aes_key *key, uint8_t *input, uint32_t nb_blocks)
 {
-	aes_block block;
-
 	if (!nb_blocks)
 		return;
 
@@ -83,16 +81,12 @@ void aes_encrypt_ecb(uint8_t *output, aes_key *key, uint8_t *input, uint32_t nb_
 #endif
 
 	for ( ; nb_blocks-- > 0; input += 16, output += 16) {
-		block128_copy(&block, (block128 *) input);
-		aes_encrypt_block(&block, key, &block);
-		block128_copy((block128 *) output, &block);
+		aes_encrypt_block((block128 *) output, key, (block128 *) input);
 	}
 }
 
 void aes_decrypt_ecb(uint8_t *output, aes_key *key, uint8_t *input, uint32_t nb_blocks)
 {
-	aes_block block;
-
 	if (!nb_blocks)
 		return;
 
@@ -102,9 +96,7 @@ void aes_decrypt_ecb(uint8_t *output, aes_key *key, uint8_t *input, uint32_t nb_
 #endif
 
 	for ( ; nb_blocks-- > 0; input += 16, output += 16) {
-		block128_copy(&block, (block128 *) input);
-		aes_decrypt_block(&block, key, &block);
-		block128_copy((block128 *) output, &block);
+		aes_decrypt_block((block128 *) output, key, (block128 *) input);
 	}
 }
 
