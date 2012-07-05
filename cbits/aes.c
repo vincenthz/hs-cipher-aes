@@ -82,16 +82,10 @@ void aes_encrypt_ecb(uint8_t *output, aes_key *key, uint8_t *input, uint32_t nb_
 		return aes_ni_encrypt_ecb(output, key, input, nb_blocks);
 #endif
 
-	while (nb_blocks-- > 0) {
-		block.q[0] = ((uint64_t *) input)[0];
-		block.q[1] = ((uint64_t *) input)[1];
-
+	for ( ; nb_blocks-- > 0; input += 16, output += 16) {
+		block128_copy(&block, (block128 *) input);
 		aes_encrypt_block(&block, key, &block);
-
-		((uint64_t *) output)[0] = block.q[0];
-		((uint64_t *) output)[1] = block.q[1];
-		input += 16;
-		output += 16;
+		block128_copy((block128 *) output, &block);
 	}
 }
 
@@ -107,16 +101,10 @@ void aes_decrypt_ecb(uint8_t *output, aes_key *key, uint8_t *input, uint32_t nb_
 		return aes_ni_decrypt_ecb(output, key, input, nb_blocks);
 #endif
 
-	while (nb_blocks-- > 0) {
-		block.q[0] = ((uint64_t *) input)[0];
-		block.q[1] = ((uint64_t *) input)[1];
-
+	for ( ; nb_blocks-- > 0; input += 16, output += 16) {
+		block128_copy(&block, (block128 *) input);
 		aes_decrypt_block(&block, key, &block);
-
-		((uint64_t *) output)[0] = block.q[0];
-		((uint64_t *) output)[1] = block.q[1];
-		input += 16;
-		output += 16;
+		block128_copy((block128 *) output, &block);
 	}
 }
 
@@ -144,14 +132,12 @@ void aes_encrypt_cbc(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *inpu
 	/* preload IV in block */
 	block128_copy(&block, iv);
 
-	while (nb_blocks-- > 0) {
+	for ( ; nb_blocks-- > 0; input += 16, output += 16) {
 		block128_xor(&block, (block128 *) input);
 
 		aes_encrypt_block(&block, key, &block);
 
 		block128_copy((block128 *) output, &block);
-		input += 16;
-		output += 16;
 	}
 }
 
@@ -198,11 +184,9 @@ void aes_gen_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint32_t nb_block
 	block.q[0] = iv->q[0];
 	block.q[1] = iv->q[1];
 
-	while (nb_blocks-- > 0) {
+	for ( ; nb_blocks-- > 0; output += 16, block128_inc_be(&block)) {
 		aes_encrypt_block(&o, key, &block);
 		block128_copy((block128 *) output, &o);
-		block128_inc_be(&block);
-		output += 16;
 	}
 }
 
@@ -216,14 +200,10 @@ void aes_encrypt_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *inpu
 	block.q[0] = iv->q[0];
 	block.q[1] = iv->q[1];
 
-	while (nb_blocks-- > 0) {
+	for ( ; nb_blocks-- > 0; block128_inc_be(&block), output += 16, input += 16) {
 		aes_encrypt_block(&o, key, &block);
 		((uint64_t *) output)[0] = o.q[0] ^ ((uint64_t *) input)[0];
 		((uint64_t *) output)[1] = o.q[1] ^ ((uint64_t *) input)[1];
-
-		block128_inc_be(&block);
-		output += 16;
-		input += 16;
 	}
 
 	if ((len % 16) != 0) {
@@ -259,18 +239,14 @@ void aes_encrypt_xts(uint8_t *output, aes_key *k1, aes_key *k2, aes_block *datau
 	while (spoint-- > 0)
 		gf_mulx(&tweak);
 
-	while (nb_blocks-- > 0) {
+	for ( ; nb_blocks-- > 0; input += 16, output += 16, gf_mulx(&tweak)) {
 		block128_copy(&block, (block128 *) input);
 
 		block128_xor(&block, &tweak);
 		aes_encrypt_block(&block, k1, &block);
 		block128_xor(&block, &tweak);
 
-		gf_mulx(&tweak);
-
 		block128_copy((block128 *) output, &block);
-		input += 16;
-		output += 16;
 	}
 }
 
@@ -290,18 +266,14 @@ void aes_decrypt_xts(uint8_t *output, aes_key *k1, aes_key *k2, aes_block *datau
 	while (spoint-- > 0)
 		gf_mulx(&tweak);
 
-	while (nb_blocks-- > 0) {
+	for ( ; nb_blocks-- > 0; input += 16, output += 16, gf_mulx(&tweak)) {
 		block128_copy(&block, (block128 *) input);
 
 		block128_xor(&block, &tweak);
 		aes_decrypt_block(&block, k1, &block);
 		block128_xor(&block, &tweak);
 
-		gf_mulx(&tweak);
 		block128_copy((block128 *) output, &block);
-
-		input += 16;
-		output += 16;
 	}
 }
 
