@@ -56,7 +56,7 @@ void aes_decrypt_block(aes_block *output, aes_key *key, aes_block *input)
 	aes_generic_decrypt_block(output, key, input);
 }
 
-void aes_init(aes_key *key, uint8_t *origkey, uint8_t size)
+void aes_initkey(aes_key *key, uint8_t *origkey, uint8_t size)
 {
 	switch (size) {
 	case 16: key->nbr = 10; break;

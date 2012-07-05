@@ -55,7 +55,7 @@ typedef struct {
 } aes_gcm;
 
 /* in bytes: either 16,24,32 */
-void aes_init(aes_key *ctx, uint8_t *key, uint8_t size);
+void aes_initkey(aes_key *ctx, uint8_t *key, uint8_t size);
 
 void aes_encrypt(aes_block *output, aes_key *key, aes_block *input);
 void aes_decrypt(aes_block *output, aes_key *key, aes_block *input);

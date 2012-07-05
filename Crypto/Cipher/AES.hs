@@ -260,7 +260,7 @@ gcmFinish :: GCM -> Int -> ByteString
 gcmFinish gcm taglen = B.take taglen (unsafeCreate 16 $ \t -> allocaFrom gcm (finish t))
     where finish t p = c_aes_gcm_finish (castPtr t) p
 
-foreign import ccall "aes.h aes_init"
+foreign import ccall "aes.h aes_initkey"
     c_aes_init :: Ptr Key -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_encrypt_ecb"
