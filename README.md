@@ -21,8 +21,9 @@ Implementation details:
 
 TODO:
 
+* remove create\_round\_key from sw implementation.
 * add aesni acceleration for aes192 and aes256.
-* add pclmulqdq acceleration for GF
+* add pclmulqdq acceleration for GF.
 * make galois multiplication endian safe.
 * check big endian machine.
 * optimise further (lots of low hanging fruits).
