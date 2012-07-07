@@ -1,5 +1,5 @@
 Name:                cipher-aes
-Version:             0.1.0
+Version:             0.1.1
 Description:         Fast AES cipher implementation with advanced mode of operations
 License:             BSD3
 License-file:        LICENSE
