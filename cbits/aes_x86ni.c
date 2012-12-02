@@ -27,6 +27,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#ifdef WITH_AESNI
+
 #include <wmmintrin.h>
 #include <tmmintrin.h>
 #include "aes.h"
@@ -266,5 +269,7 @@ void aes_ni_encrypt_xts(uint8_t *out, aes_key *key1, aes_key *key2,
 		}
 	} while (0);
 }
+
+#endif
 
 #endif

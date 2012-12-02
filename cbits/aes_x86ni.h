@@ -31,6 +31,8 @@
 #ifndef AES_X86NI_H
 #define AES_X86NI_H
 
+#ifdef WITH_AESNI
+
 #if defined(__i386__) || defined(__x86_64__)
 
 #include <wmmintrin.h>
@@ -46,6 +48,8 @@ void aes_ni_encrypt_xts(uint8_t *out, aes_key *key1, aes_key *key2,
                         uint8_t *_tweak, uint32_t spoint, uint8_t *in, uint32_t blocks);
 
 void gf_mul_x86ni(block128 *res, block128 *a_, block128 *b_);
+
+#endif
 
 #endif
 

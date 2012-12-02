@@ -37,10 +37,10 @@ Library
   C-sources:         cbits/aes_generic.c
                      cbits/aes.c
                      cbits/gf.c
-                     cbits/aes_x86ni.c
                      cbits/cpu.c
-  if arch(i386) || arch(x86_64)
-    CC-options:      -mssse3 -maes -mpclmul
+  if os(linux) && (arch(i386) || arch(x86_64))
+    CC-options:      -mssse3 -maes -mpclmul -DWITH_AESNI
+    C-sources:       cbits/aes_x86ni.c
 
 Test-Suite test-cipher-aes
   type:              exitcode-stdio-1.0
