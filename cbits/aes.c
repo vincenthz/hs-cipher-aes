@@ -40,7 +40,7 @@
 
 void aes_encrypt_block(aes_block *output, aes_key *key, aes_block *input)
 {
-#ifdef ARCH_X86
+#if defined(ARCH_X86) && defined(WITH_AESNI)
 	if (have_aesni() && key->nbr == 10)
 		return aes_ni_encrypt_ecb((uint8_t *) output, key, (uint8_t *) input, 1);
 #endif
@@ -49,7 +49,7 @@ void aes_encrypt_block(aes_block *output, aes_key *key, aes_block *input)
 
 void aes_decrypt_block(aes_block *output, aes_key *key, aes_block *input)
 {
-#ifdef ARCH_X86
+#if defined(ARCH_X86) && defined(WITH_AESNI)
 	if (have_aesni() && key->nbr == 10)
 		return aes_ni_decrypt_ecb((uint8_t *) output, key, (uint8_t *) input, 1);
 #endif
@@ -63,7 +63,7 @@ void aes_initkey(aes_key *key, uint8_t *origkey, uint8_t size)
 	case 24: key->nbr = 12; break;
 	case 32: key->nbr = 14; break;
 	}
-#ifdef ARCH_X86
+#if defined(ARCH_X86) && defined(WITH_AESNI)
 	if (have_aesni() && size == 16)
 		return aes_ni_init(key, origkey, size);
 #endif
@@ -75,7 +75,7 @@ void aes_encrypt_ecb(uint8_t *output, aes_key *key, uint8_t *input, uint32_t nb_
 	if (!nb_blocks)
 		return;
 
-#ifdef ARCH_X86
+#if defined(ARCH_X86) && defined(WITH_AESNI)
 	if (have_aesni() && key->nbr == 10)
 		return aes_ni_encrypt_ecb(output, key, input, nb_blocks);
 #endif
@@ -90,7 +90,7 @@ void aes_decrypt_ecb(uint8_t *output, aes_key *key, uint8_t *input, uint32_t nb_
 	if (!nb_blocks)
 		return;
 
-#ifdef ARCH_X86
+#if defined(ARCH_X86) && defined(WITH_AESNI)
 	if (have_aesni() && key->nbr == 10)
 		return aes_ni_decrypt_ecb(output, key, input, nb_blocks);
 #endif
@@ -106,7 +106,7 @@ void aes_encrypt_cbc(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *inpu
 
 	if (!nb_blocks)
 		return;
-#ifdef ARCH_X86
+#if defined(ARCH_X86) && defined(WITH_AESNI)
 	if (have_aesni() && key->nbr == 10)
 		return aes_ni_encrypt_cbc(output, key, (uint8_t *) iv, input, nb_blocks);
 #endif
@@ -130,7 +130,7 @@ void aes_decrypt_cbc(uint8_t *output, aes_key *key, aes_block *ivini, uint8_t *i
 
 	if (!nb_blocks)
 		return;
-#ifdef ARCH_X86
+#if defined(ARCH_X86) && defined(WITH_AESNI)
 	if (have_aesni() && key->nbr == 10) {
 		return aes_ni_decrypt_cbc(output, key, (uint8_t *) ivini, input, nb_blocks);
 	}
@@ -197,7 +197,7 @@ void aes_encrypt_xts(uint8_t *output, aes_key *k1, aes_key *k2, aes_block *datau
 	if (!nb_blocks)
 		return;
 
-#ifdef ARCH_X86
+#if defined(ARCH_X86) && defined(WITH_AESNI)
 	if (have_aesni() && k1->nbr == 10) {
 		aes_ni_encrypt_xts(output, k1, k2, (uint8_t *) dataunit, spoint, input, nb_blocks);
 		return;
