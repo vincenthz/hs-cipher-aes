@@ -50,8 +50,8 @@ Test-Suite test-cipher-aes
                    , cipher-aes
                    , bytestring
                    , QuickCheck >= 2
-                   , test-framework >= 0.3.3 && < 0.7
-                   , test-framework-quickcheck2 >= 0.2.9 && < 0.3
+                   , test-framework >= 0.3.3
+                   , test-framework-quickcheck2 >= 0.2.9
 
 Benchmark bench-cipher-aes
   hs-source-dirs:    Benchmarks
