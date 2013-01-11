@@ -15,6 +15,7 @@ module Crypto.Cipher.AES
 
     -- * creation
     , initKey
+    , keyOfCtx
 
     -- * misc
     , genCTR
@@ -92,6 +93,15 @@ initKey b@(B.length -> len)
                 c_aes_init ptr (castPtr ikey) (fromIntegral len)
                 fptr <- newForeignPtr c_free_finalizer (castPtr ptr)
                 return $ Key $ fromForeignPtr fptr 0 (16+2*2*16*nbR)
+
+-- | return the user key from the Key context
+keyOfCtx :: Key -> ByteString
+keyOfCtx (Key bs) = B.take sz (B.drop 8 bs)
+    where nbRound            = unsafeHead $ B.take 1 bs
+          sz | nbRound == 10 = 16
+             | nbRound == 12 = 24
+             | nbRound == 14 = 32
+             | otherwise     = error "not a valid key"
 
 -- | encrypt using Electronic Code Book (ECB)
 {-# NOINLINE encryptECB #-}
