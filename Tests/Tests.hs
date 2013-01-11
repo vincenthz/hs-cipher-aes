@@ -52,6 +52,8 @@ data XTSUnit = XTSUnit B.ByteString B.ByteString B.ByteString B.ByteString
     deriving (Show,Eq)
 data GCMUnit = GCMUnit B.ByteString B.ByteString B.ByteString B.ByteString
     deriving (Show,Eq)
+data KeyUnit = KeyUnit B.ByteString
+    deriving (Show,Eq)
 
 generateKeyOf size = B.pack <$> replicateM size arbitrary
 generateKey = elements [16,24,32] >>= generateKeyOf
@@ -91,6 +93,9 @@ instance Arbitrary XTSUnit where
                 <*> generateIv
                 <*> generatePlaintextMultiple16
 
+instance Arbitrary KeyUnit where
+    arbitrary = KeyUnit <$> generateKey
+
 idECBTests (ECBUnit (AES.initKey -> key) plaintext) =
     plaintext `assertEq` AES.decryptECB key (AES.encryptECB key plaintext)
 
@@ -108,6 +113,8 @@ idGCMTests (GCMUnit (AES.initKey -> key) (AES.IV -> iv) aad plaintext) =
     let (plaintext2, tag2) = AES.decryptGCM key iv aad cipherText in
     (plaintext `assertEq` plaintext2) && (tag == tag2)
 
+idKey (KeyUnit keyBs) = keyBs == AES.keyOfCtx (AES.initKey keyBs)
+
 assertEq expected got
 	| expected == got = True
 	| otherwise       = error ("expected: " ++ showhex expected ++ " got: " ++ showhex got)
@@ -119,7 +126,8 @@ assertEq expected got
                   | otherwise          = '_'
 
 tests =
-    [ testGroup "KAT-ECB-Encrypt" $ katECBTests KATECB.vectors_encrypt AES.encryptECB
+    [ testProperty "key-id" idKey
+    , testGroup "KAT-ECB-Encrypt" $ katECBTests KATECB.vectors_encrypt AES.encryptECB
     , testGroup "KAT-ECB-Decrypt" $ katECBTests KATECB.vectors_decrypt AES.decryptECB
     , testGroup "KAT-CBC-Encrypt" $ katCBCTests KATCBC.vectors_encrypt AES.encryptCBC
     , testGroup "KAT-CBC-Decrypt" $ katCBCTests KATCBC.vectors_decrypt AES.decryptCBC
