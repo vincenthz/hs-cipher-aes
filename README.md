@@ -26,3 +26,7 @@ TODO:
 * add pclmulqdq acceleration for GF.
 * make galois multiplication endian safe.
 * optimise further (lots of low hanging fruits).
+* add a streaming GCM API
+* GCM's GMAC support
+* rename Key to Context
+* use Key from crypto-types
