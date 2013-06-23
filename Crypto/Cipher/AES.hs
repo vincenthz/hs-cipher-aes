@@ -294,7 +294,7 @@ decryptGCM = doGCM gcmAppendDecrypt
 doECB :: (Ptr b -> Ptr AES -> CString -> CUInt -> IO ())
       -> AES -> ByteString -> ByteString
 doECB f ctx input
-    | r /= 0    = error "cannot use with non multiple of block size"
+    | r /= 0    = error $ "Encryption error: input length must be a multiple of block size (16). Its length is: " ++ (show len)
     | otherwise = unsafeCreate len $ \o ->
                   keyToPtr ctx $ \k ->
                   unsafeUseAsCString input $ \i ->
@@ -302,14 +302,13 @@ doECB f ctx input
   where (nbBlocks, r) = len `quotRem` 16
         len           = (B.length input)
 
-
 {-# INLINE doCBC #-}
 doCBC :: Byteable iv
       => (Ptr b -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ())
       -> AES -> iv -> ByteString -> ByteString
 doCBC f ctx iv input
     | len == 0  = B.empty
-    | r /= 0    = error "cannot use with non multiple of block size"
+    | r /= 0    = error $ "Encryption error: input length must be a multiple of block size (16). Its length is: " ++ (show len)
     | otherwise = unsafeCreate len $ \o ->
                   withKeyAndIV ctx iv $ \k v ->
                   unsafeUseAsCString input $ \i ->
@@ -327,7 +326,7 @@ doXTS :: Byteable iv
       -> ByteString
 doXTS f (key1,key2) iv spoint input
     | len == 0  = B.empty
-    | r /= 0    = error "cannot use with non multiple of block size (yet)"
+    | r /= 0    = error $ "Encryption error: input length must be a multiple of block size (16) for now. Its length is: " ++ (show len)
     | otherwise = unsafeCreate len $ \o -> withKey2AndIV key1 key2 iv $ \k1 k2 v -> unsafeUseAsCString input $ \i ->
             f (castPtr o) k1 k2 v (fromIntegral spoint) i (fromIntegral nbBlocks)
   where (nbBlocks, r) = len `quotRem` 16
