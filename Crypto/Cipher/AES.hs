@@ -190,7 +190,7 @@ decryptGCM = doGCM gcmAppendDecrypt
 doECB :: (Ptr b -> Ptr Key -> CString -> CUInt -> IO ())
       -> Key -> ByteString -> ByteString
 doECB f key input
-    | r /= 0    = error "Encryption error: input length must be a multiple of block size (16). Its length is: " ++ show len
+    | r /= 0    = error $ "Encryption error: input length must be a multiple of block size (16). Its length is: " ++ (show len)
     | otherwise = unsafeCreate len $ \o -> keyToPtr key $ \k -> unsafeUseAsCString input $ \i ->
             f (castPtr o) k i (fromIntegral nbBlocks)
     where (nbBlocks, r) = len `divMod` 16
@@ -201,7 +201,7 @@ doECB f key input
 doCBC :: (Ptr b -> Ptr Key -> Ptr IV -> CString -> CUInt -> IO ())
       -> Key -> IV -> ByteString -> ByteString
 doCBC f key iv input
-    | r /= 0    = error "Encryption error: input length must be a multiple of block size (16). Its length is: " ++ show len
+    | r /= 0    = error $ "Encryption error: input length must be a multiple of block size (16). Its length is: " ++ (show len)
     | otherwise = unsafeCreate len $ \o -> withKeyAndIV key iv $ \k v -> unsafeUseAsCString input $ \i ->
             f (castPtr o) k v i (fromIntegral nbBlocks)
     where (nbBlocks, r) = len `divMod` 16
@@ -211,7 +211,7 @@ doCBC f key iv input
 doXTS :: (Ptr b -> Ptr Key -> Ptr Key -> Ptr IV -> CUInt -> CString -> CUInt -> IO ())
       -> (Key, Key) -> IV -> Word32 -> ByteString -> ByteString
 doXTS f (key1,key2) iv spoint input
-    | r /= 0    = error "Encryption error: input length must be a multiple of block size (16) for now. Its length is: " ++ show len
+    | r /= 0    = error $ "Encryption error: input length must be a multiple of block size (16) for now. Its length is: " ++ (show len)
     | otherwise = unsafeCreate len $ \o -> withKey2AndIV key1 key2 iv $ \k1 k2 v -> unsafeUseAsCString input $ \i ->
             f (castPtr o) k1 k2 v (fromIntegral spoint) i (fromIntegral nbBlocks)
     where (nbBlocks, r) = len `divMod` 16
