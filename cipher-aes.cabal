@@ -32,6 +32,9 @@ Extra-Source-Files:  Tests/*.hs
 Library
   Build-Depends:     base >= 4 && < 5
                    , bytestring
+                   , byteable
+                   , crypto-cipher-types
+                   , securemem
   Exposed-modules:   Crypto.Cipher.AES
   ghc-options:       -Wall
   C-sources:         cbits/aes_generic.c
@@ -48,7 +51,9 @@ Test-Suite test-cipher-aes
   Main-Is:           Tests.hs
   Build-depends:     base >= 4 && < 5
                    , cipher-aes
+                   , crypto-cipher-types
                    , bytestring
+                   , byteable
                    , QuickCheck >= 2
                    , test-framework >= 0.3.3
                    , test-framework-quickcheck2 >= 0.2.9
@@ -60,6 +65,7 @@ Benchmark bench-cipher-aes
   Build-depends:     base >= 4 && < 5
                    , bytestring
                    , cipher-aes
+                   , crypto-cipher-types
                    , criterion
                    , mtl
 

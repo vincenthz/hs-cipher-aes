@@ -11,8 +11,10 @@ import Test.QuickCheck
 import Test.QuickCheck.Test
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
+import Data.Byteable
 import qualified Data.ByteString as B
 import qualified Crypto.Cipher.AES as AES
+import Crypto.Cipher.Types (iv128, IV(..), AuthTag(..), key128, key192, key256)
 
 import qualified KATECB
 import qualified KATCBC
@@ -24,20 +26,20 @@ encryptBlock initF encryptF key plaintext =
 
 katECBTests vectors f = concatMap makeTests vectors
     where makeTests (name, v) = map (\(z,i) -> testProperty (name ++ " " ++ show i) $ makeTest z) $ zip v [0..]
-               where makeTest (AES.initKey -> key,plaintext,expected) = assertEq expected $ f key plaintext
+               where makeTest (initKeyBS -> key,plaintext,expected) = assertEq expected $ f key plaintext
 
 katCBCTests vectors f = concatMap makeTests vectors
     where makeTests (name, v) = map (\(z,i) -> testProperty (name ++ " " ++ show i) $ makeTest z) $ zip v [0..]
-            where makeTest (AES.initKey -> key,AES.IV -> iv,plaintext,expected) = assertEq expected $ f key iv plaintext
+            where makeTest (initKeyBS -> key,iv128 -> iv,plaintext,expected) = assertEq expected $ f key iv plaintext
 
 katXTSTests vectors f = concatMap makeTests vectors
     where makeTests (name, v) = map (\(z,i) -> testProperty (name ++ " " ++ show i) $ makeTest z) $ zip v [0..]
-              where makeTest (AES.initKey -> key1,AES.initKey -> key2, AES.IV -> iv,plaintext,_,expected) =
+              where makeTest (initKeyBS -> key1,initKeyBS -> key2, iv128 -> iv,plaintext,_,expected) =
                         (assertEq expected $ f (key1,key2) iv 0 plaintext)
 
 katGCMTests vectors f = concatMap makeTests vectors
     where makeTests (name, v) = map (\(z,i) -> testProperty (name ++ " " ++ show i) $ makeTest z) $ zip v [0..]
-            where makeTest (AES.initKey -> key, AES.IV -> iv, aad, plaintext, expectedOutput, taglen, expectedTag) =
+            where makeTest (initKeyBS -> key, IV -> iv, aad, plaintext, expectedOutput, taglen, AuthTag -> expectedTag) =
                         let (output,tag) = f key iv aad plaintext in
                         assertEq expectedOutput output && (assertEq tag expectedTag)
 
@@ -96,29 +98,36 @@ instance Arbitrary XTSUnit where
 instance Arbitrary KeyUnit where
     arbitrary = KeyUnit <$> generateKey
 
-idECBTests (ECBUnit (AES.initKey -> key) plaintext) =
+initKeyBS bs
+    | B.length bs == 16 = AES.initKey $ key128 bs
+    | B.length bs == 24 = AES.initKey $ key192 bs
+    | B.length bs == 32 = AES.initKey $ key256 bs
+    | otherwise         = error "not a valid key size"
+
+idECBTests (ECBUnit (initKeyBS -> key) plaintext) =
     plaintext `assertEq` AES.decryptECB key (AES.encryptECB key plaintext)
 
-idCBCTests (CBCUnit (AES.initKey -> key) (AES.IV -> iv) plaintext) =
+idCBCTests (CBCUnit (initKeyBS -> key) (iv128 -> iv) plaintext) =
     plaintext `assertEq` AES.decryptCBC key iv (AES.encryptCBC key iv plaintext)
 
-idCTRTests (CTRUnit (AES.initKey -> key) (AES.IV -> iv) plaintext) =
+idCTRTests (CTRUnit (initKeyBS -> key) (iv128 -> iv) plaintext) =
     plaintext `assertEq` AES.decryptCTR key iv (AES.encryptCTR key iv plaintext)
 
-idXTSTests (XTSUnit (AES.initKey -> key1) (AES.initKey -> key2) (AES.IV -> iv) plaintext) =
+idXTSTests (XTSUnit (initKeyBS -> key1) (initKeyBS -> key2) (iv128 -> iv) plaintext) =
     plaintext `assertEq` AES.decryptXTS (key1, key2) iv 0 (AES.encryptXTS (key1, key2) iv 0 plaintext)
 
-idGCMTests (GCMUnit (AES.initKey -> key) (AES.IV -> iv) aad plaintext) =
+idGCMTests (GCMUnit (initKeyBS -> key) (IV -> iv) aad plaintext) =
     let (cipherText, tag) = AES.encryptGCM key iv aad plaintext in
     let (plaintext2, tag2) = AES.decryptGCM key iv aad cipherText in
     (plaintext `assertEq` plaintext2) && (tag == tag2)
 
-idKey (KeyUnit keyBs) = keyBs == AES.keyOfCtx (AES.initKey keyBs)
+--idKey (KeyUnit keyBs) = keyBs == AES.keyOfCtx (AES.initKey keyBs)
 
+assertEq :: (Byteable b, Eq b) => b -> b -> Bool
 assertEq expected got
 	| expected == got = True
 	| otherwise       = error ("expected: " ++ showhex expected ++ " got: " ++ showhex got)
-    where showhex = concatMap toHex . B.unpack
+    where showhex = concatMap toHex . B.unpack . toBytes
           toHex b = let (l,r) = b `divMod` 16 in map (toHexChar . fromIntegral) [l,r]
           toHexChar c
                   | c >= 0 && c <= 9   = toEnum (c + fromEnum '0')
@@ -126,8 +135,7 @@ assertEq expected got
                   | otherwise          = '_'
 
 tests =
-    [ testProperty "key-id" idKey
-    , testGroup "KAT-ECB-Encrypt" $ katECBTests KATECB.vectors_encrypt AES.encryptECB
+    [ testGroup "KAT-ECB-Encrypt" $ katECBTests KATECB.vectors_encrypt AES.encryptECB
     , testGroup "KAT-ECB-Decrypt" $ katECBTests KATECB.vectors_decrypt AES.decryptECB
     , testGroup "KAT-CBC-Encrypt" $ katCBCTests KATCBC.vectors_encrypt AES.encryptCBC
     , testGroup "KAT-CBC-Decrypt" $ katCBCTests KATCBC.vectors_decrypt AES.decryptCBC

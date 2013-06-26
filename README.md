@@ -30,3 +30,4 @@ TODO:
 * GCM's GMAC support
 * rename Key to Context
 * use Key from crypto-types
+* add OCB mode

@@ -14,29 +14,30 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
 import qualified Crypto.Cipher.AES as AES
+import Crypto.Cipher.Types (key128, key192, key256, iv128, IV(..))
 
-key128 = AES.initKey $ B.replicate 16 0
-key192 = AES.initKey $ B.replicate 24 0
-key256 = AES.initKey $ B.replicate 32 0
+k128 = AES.initKey $ key128 $ B.replicate 16 0
+k192 = AES.initKey $ key192 $ B.replicate 24 0
+k256 = AES.initKey $ key256 $ B.replicate 32 0
 
-nullIV = AES.IV $ B.replicate 16 0
-nullIVGCM = AES.IV $ B.replicate 12 0
+nullIV = iv128 $ B.replicate 16 0
+nullIVGCM = IV $ B.replicate 12 0
 
-aesEncrypt128 = AES.encryptECB key128
-aesEncrypt128CBC = AES.encryptCBC key128 nullIV
-aesEncrypt128CTR = AES.encryptCTR key128 nullIV
-aesEncrypt128XTS = AES.encryptXTS (key128,key128) nullIV 0
-aesEncrypt128GCM = fst . AES.encryptGCM key128 nullIVGCM B.empty
+aesEncrypt128 = AES.encryptECB k128
+aesEncrypt128CBC = AES.encryptCBC k128 nullIV
+aesEncrypt128CTR = AES.encryptCTR k128 nullIV
+aesEncrypt128XTS = AES.encryptXTS (k128,k128) nullIV 0
+aesEncrypt128GCM = fst . AES.encryptGCM k128 nullIVGCM B.empty
 
-aesEncrypt192 = AES.encryptECB key192
-aesEncrypt192CBC = AES.encryptCBC key192 nullIV
-aesEncrypt192CTR = AES.encryptCTR key192 nullIV
-aesEncrypt192GCM = fst . AES.encryptGCM key192 nullIVGCM B.empty
-aesEncrypt256 = AES.encryptECB key256
-aesEncrypt256CBC = AES.encryptCBC key256 nullIV
-aesEncrypt256CTR = AES.encryptCTR key256 nullIV
-aesEncrypt256XTS = AES.encryptXTS (key256,key256) nullIV 0
-aesEncrypt256GCM = fst . AES.encryptGCM key256 nullIVGCM B.empty
+aesEncrypt192 = AES.encryptECB k192
+aesEncrypt192CBC = AES.encryptCBC k192 nullIV
+aesEncrypt192CTR = AES.encryptCTR k192 nullIV
+aesEncrypt192GCM = fst . AES.encryptGCM k192 nullIVGCM B.empty
+aesEncrypt256 = AES.encryptECB k256
+aesEncrypt256CBC = AES.encryptCBC k256 nullIV
+aesEncrypt256CTR = AES.encryptCTR k256 nullIV
+aesEncrypt256XTS = AES.encryptXTS (k256,k256) nullIV 0
+aesEncrypt256GCM = fst . AES.encryptGCM k256 nullIVGCM B.empty
 
 b16 f   = whnf f $ B.replicate 16 0
 b32 f   = whnf f $ B.replicate 32 0
