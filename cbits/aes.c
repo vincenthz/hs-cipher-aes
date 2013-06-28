@@ -125,7 +125,7 @@ void aes_encrypt_cbc(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *inpu
 
 void aes_decrypt_cbc(uint8_t *output, aes_key *key, aes_block *ivini, uint8_t *input, uint32_t nb_blocks)
 {
-	aes_block block,blocko;
+	aes_block block, blocko;
 	aes_block iv;
 
 	if (!nb_blocks)
@@ -139,7 +139,7 @@ void aes_decrypt_cbc(uint8_t *output, aes_key *key, aes_block *ivini, uint8_t *i
 	/* preload IV in block */
 	block128_copy(&iv, ivini);
 
-	for ( ;nb_blocks-- > 0; input += 16, output += 16) {
+	for ( ; nb_blocks-- > 0; input += 16, output += 16) {
 		block128_copy(&block, (block128 *) input);
 
 		aes_decrypt_block(&blocko, key, &block);
