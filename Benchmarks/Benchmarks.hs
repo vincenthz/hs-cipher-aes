@@ -14,14 +14,14 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
 import qualified Crypto.Cipher.AES as AES
-import Crypto.Cipher.Types (key128, key192, key256, iv128, IV(..))
+import Crypto.Cipher.Types ()
 
-k128 = AES.initKey $ key128 $ B.replicate 16 0
-k192 = AES.initKey $ key192 $ B.replicate 24 0
-k256 = AES.initKey $ key256 $ B.replicate 32 0
+k128 = AES.initAES $ B.replicate 16 0
+k192 = AES.initAES $ B.replicate 24 0
+k256 = AES.initAES $ B.replicate 32 0
 
-nullIV = iv128 $ B.replicate 16 0
-nullIVGCM = IV $ B.replicate 12 0
+nullIV = B.replicate 16 0
+nullIVGCM = B.replicate 12 0
 
 aesEncrypt128 = AES.encryptECB k128
 aesEncrypt128CBC = AES.encryptCBC k128 nullIV

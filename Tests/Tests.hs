@@ -14,7 +14,7 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Data.Byteable
 import qualified Data.ByteString as B
 import qualified Crypto.Cipher.AES as AES
-import Crypto.Cipher.Types (iv128, IV(..), AuthTag(..), key128, key192, key256)
+import Crypto.Cipher.Types hiding (key, iv) -- (iv128, IV(..), AuthTag(..), key128, key192, key256)
 
 import qualified KATECB
 import qualified KATCBC
@@ -26,21 +26,21 @@ encryptBlock initF encryptF key plaintext =
 
 katECBTests vectors f = concatMap makeTests vectors
     where makeTests (name, v) = map (\(z,i) -> testProperty (name ++ " " ++ show i) $ makeTest z) $ zip v [0..]
-               where makeTest (initKeyBS -> key,plaintext,expected) = assertEq expected $ f key plaintext
+               where makeTest (AES.initAES -> aes,plaintext,expected) = assertEq expected $ f aes plaintext
 
 katCBCTests vectors f = concatMap makeTests vectors
     where makeTests (name, v) = map (\(z,i) -> testProperty (name ++ " " ++ show i) $ makeTest z) $ zip v [0..]
-            where makeTest (initKeyBS -> key,iv128 -> iv,plaintext,expected) = assertEq expected $ f key iv plaintext
+            where makeTest (AES.initAES -> aes,testIV,plaintext,expected) = assertEq expected $ f aes testIV plaintext
 
 katXTSTests vectors f = concatMap makeTests vectors
     where makeTests (name, v) = map (\(z,i) -> testProperty (name ++ " " ++ show i) $ makeTest z) $ zip v [0..]
-              where makeTest (initKeyBS -> key1,initKeyBS -> key2, iv128 -> iv,plaintext,_,expected) =
-                        (assertEq expected $ f (key1,key2) iv 0 plaintext)
+              where makeTest (AES.initAES -> aes1,AES.initAES -> aes2, testIV,plaintext,_,expected) =
+                        (assertEq expected $ f (aes1,aes2) testIV 0 plaintext)
 
 katGCMTests vectors f = concatMap makeTests vectors
     where makeTests (name, v) = map (\(z,i) -> testProperty (name ++ " " ++ show i) $ makeTest z) $ zip v [0..]
-            where makeTest (initKeyBS -> key, IV -> iv, aad, plaintext, expectedOutput, taglen, AuthTag -> expectedTag) =
-                        let (output,tag) = f key iv aad plaintext in
+            where makeTest (AES.initAES -> aes, testIV, aad, plaintext, expectedOutput, taglen, AuthTag -> expectedTag) =
+                        let (output,tag) = f aes testIV aad plaintext in
                         assertEq expectedOutput output && (assertEq tag expectedTag)
 
 
@@ -98,30 +98,24 @@ instance Arbitrary XTSUnit where
 instance Arbitrary KeyUnit where
     arbitrary = KeyUnit <$> generateKey
 
-initKeyBS bs
-    | B.length bs == 16 = AES.initKey $ key128 bs
-    | B.length bs == 24 = AES.initKey $ key192 bs
-    | B.length bs == 32 = AES.initKey $ key256 bs
-    | otherwise         = error "not a valid key size"
+idECBTests (ECBUnit (AES.initAES -> aes) plaintext) =
+    plaintext `assertEq` AES.decryptECB aes (AES.encryptECB aes plaintext)
 
-idECBTests (ECBUnit (initKeyBS -> key) plaintext) =
-    plaintext `assertEq` AES.decryptECB key (AES.encryptECB key plaintext)
+idCBCTests (CBCUnit (AES.initAES -> aes) testIV plaintext) =
+    plaintext `assertEq` AES.decryptCBC aes testIV (AES.encryptCBC aes testIV plaintext)
 
-idCBCTests (CBCUnit (initKeyBS -> key) (iv128 -> iv) plaintext) =
-    plaintext `assertEq` AES.decryptCBC key iv (AES.encryptCBC key iv plaintext)
+idCTRTests (CTRUnit (AES.initAES -> aes) testIV plaintext) =
+    plaintext `assertEq` AES.decryptCTR aes testIV (AES.encryptCTR aes testIV plaintext)
 
-idCTRTests (CTRUnit (initKeyBS -> key) (iv128 -> iv) plaintext) =
-    plaintext `assertEq` AES.decryptCTR key iv (AES.encryptCTR key iv plaintext)
+idXTSTests (XTSUnit (AES.initAES -> aes1) (AES.initAES -> aes2) testIV plaintext) =
+    plaintext `assertEq` AES.decryptXTS (aes1, aes2) testIV 0 (AES.encryptXTS (aes1, aes2) testIV 0 plaintext)
 
-idXTSTests (XTSUnit (initKeyBS -> key1) (initKeyBS -> key2) (iv128 -> iv) plaintext) =
-    plaintext `assertEq` AES.decryptXTS (key1, key2) iv 0 (AES.encryptXTS (key1, key2) iv 0 plaintext)
-
-idGCMTests (GCMUnit (initKeyBS -> key) (IV -> iv) aad plaintext) =
-    let (cipherText, tag) = AES.encryptGCM key iv aad plaintext in
-    let (plaintext2, tag2) = AES.decryptGCM key iv aad cipherText in
+idGCMTests (GCMUnit (AES.initAES -> aes) testIV aad plaintext) =
+    let (cipherText, tag) = AES.encryptGCM aes testIV aad plaintext in
+    let (plaintext2, tag2) = AES.decryptGCM aes testIV aad cipherText in
     (plaintext `assertEq` plaintext2) && (tag == tag2)
 
---idKey (KeyUnit keyBs) = keyBs == AES.keyOfCtx (AES.initKey keyBs)
+--idKey (KeyUnit keyBs) = keyBs == AES.keyOfCtx (AES.initAES keyBs)
 
 assertEq :: (Byteable b, Eq b) => b -> b -> Bool
 assertEq expected got

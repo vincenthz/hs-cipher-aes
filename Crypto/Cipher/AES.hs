@@ -10,9 +10,13 @@
 module Crypto.Cipher.AES
     (
     -- * data types
-      AESContext
+      AES
+    , AES128
+    , AES192
+    , AES256
 
     -- * creation
+    , initAES
     , initKey
 
     -- * misc
@@ -46,23 +50,44 @@ import Data.Byteable
 import qualified Data.ByteString as B
 import System.IO.Unsafe (unsafePerformIO)
 
-import Crypto.Cipher.Types (Key128, Key192, Key256, IV128, IV, AuthTag(..))
+import Crypto.Cipher.Types hiding (iv) -- (Key128, Key192, Key256, IV128, IV, AuthTag(..))
 import Data.SecureMem
 
--- | AES AESContext (pre-processed key)
-newtype AESContext = AESContext SecureMem
+-- | AES Context (pre-processed key)
+newtype AES = AES SecureMem
 
-class AESKey a where
-    initKey :: a -> AESContext
+newtype AES128 = AES128 AES
+newtype AES192 = AES192 AES
+newtype AES256 = AES256 AES
 
-instance AESKey Key128 where
-    initKey key = initAESContext (toSecureMem key) 16 10
-instance AESKey Key192 where
-    initKey key = initAESContext (toSecureMem key) 24 12
-instance AESKey Key256 where
-    initKey key = initAESContext (toSecureMem key) 32 14
+instance Cipher AES128 where
+    cipherKeySize _ = Just 16
+    cipherInit k    = AES128 $ initAES k
 
--- | GCM AESContext
+instance Cipher AES192 where
+    cipherKeySize _ = Just 24
+    cipherInit k    = AES192 $ initAES k
+
+instance Cipher AES256 where
+    cipherKeySize _ = Just 32
+    cipherInit k    = AES256 $ initAES k
+
+instance BlockCipher AES128 where
+    blockSize _ = 16
+    blockEncrypt (AES128 aes) (Block blk) = Block $ encryptECB aes blk
+    blockDecrypt (AES128 aes) (Block blk) = Block $ decryptECB aes blk
+
+instance BlockCipher AES192 where
+    blockSize _ = 16
+    blockEncrypt (AES192 aes) (Block blk) = Block $ encryptECB aes blk
+    blockDecrypt (AES192 aes) (Block blk) = Block $ decryptECB aes blk
+
+instance BlockCipher AES256 where
+    blockSize _ = 16
+    blockEncrypt (AES256 aes) (Block blk) = Block $ encryptECB aes blk
+    blockDecrypt (AES256 aes) (Block blk) = Block $ decryptECB aes blk
+
+-- | GCM AES
 newtype GCM = GCM SecureMem
 
 sizeGCM :: Int
@@ -74,39 +99,45 @@ instance Storable GCM where
     poke ptr (GCM b) = withSecureMemPtr b (\cs -> memcpy (castPtr ptr) (castPtr cs) (fromIntegral sizeGCM))
     peek ptr         = GCM `fmap` createSecureMem sizeGCM (\bptr -> memcpy bptr (castPtr ptr) (fromIntegral sizeGCM))
 
-keyToPtr :: AESContext -> (Ptr AESContext -> IO a) -> IO a
-keyToPtr (AESContext b) f = withSecureMemPtr b (f . castPtr)
+keyToPtr :: AES -> (Ptr AES -> IO a) -> IO a
+keyToPtr (AES b) f = withSecureMemPtr b (f . castPtr)
 
-ivToPtr :: Byteable b => b -> (Ptr b -> IO a) -> IO a
-ivToPtr iv f = unsafeUseAsCString (toBytes iv) (f . castPtr)
+ivToPtr :: Byteable iv => iv -> (Ptr Word8 -> IO a) -> IO a
+ivToPtr iv f = withBytePtr iv (f . castPtr)
 
-withKeyAndIV :: Byteable b => AESContext -> b -> (Ptr AESContext -> Ptr b -> IO a) -> IO a
+withKeyAndIV :: Byteable iv => AES -> iv -> (Ptr AES -> Ptr Word8 -> IO a) -> IO a
 withKeyAndIV ctx iv f = keyToPtr ctx $ \kptr -> ivToPtr iv $ \ivp -> f kptr ivp
 
-withKey2AndIV :: AESContext -> AESContext -> IV128 -> (Ptr AESContext -> Ptr AESContext -> Ptr IV128 -> IO a) -> IO a
+withKey2AndIV :: Byteable iv => AES -> AES -> iv -> (Ptr AES -> Ptr AES -> Ptr Word8 -> IO a) -> IO a
 withKey2AndIV key1 key2 iv f =
     keyToPtr key1 $ \kptr1 -> keyToPtr key2 $ \kptr2 -> ivToPtr iv $ \ivp -> f kptr1 kptr2 ivp
 
 -- | initialize key
 --
 -- rounds need to be 10 / 12 / 14. any other values will cause undefined behavior
-{-# NOINLINE initAESContext #-}
-initAESContext :: SecureMem -> Int -> Int -> AESContext
-initAESContext ctx len rounds = unsafePerformIO $ withSecureMemPtr ctx (allocAndFill rounds)
-  where allocAndFill nbR ikey = do
-            let contextSz = 16+2*2*16*nbR
-            sm <- createSecureMem contextSz $ \ptr ->
-                    c_aes_init (castPtr ptr) (castPtr ikey) (fromIntegral len)
-            return $ AESContext sm
+initAES :: Byteable b => b -> AES
+initAES k
+    | len == 16 = initWithRounds 10
+    | len == 24 = initWithRounds 12
+    | len == 32 = initWithRounds 14
+    | otherwise = error "not a valid key length"
+  where len = byteableLength k
+        initWithRounds nbR = AES $ unsafeCreateSecureMem (16+2*2*16*nbR) aesInit
+        aesInit ptr = withBytePtr k $ \ikey ->
+            c_aes_init (castPtr ptr) (castPtr ikey) (fromIntegral len)
+
+{-# DEPRECATED initKey "use initAES" #-}
+initKey :: Byteable b => b -> AES
+initKey = initAES
 
 -- | encrypt using Electronic Code Book (ECB)
 {-# NOINLINE encryptECB #-}
-encryptECB :: AESContext -> ByteString -> ByteString
+encryptECB :: AES -> ByteString -> ByteString
 encryptECB = doECB c_aes_encrypt_ecb
 
 -- | encrypt using Cipher Block Chaining (CBC)
 {-# NOINLINE encryptCBC #-}
-encryptCBC :: AESContext -> IV128 -> ByteString -> ByteString
+encryptCBC :: Byteable iv => AES -> iv -> ByteString -> ByteString
 encryptCBC = doCBC c_aes_encrypt_cbc
 
 -- | generate a counter mode pad. this is generally xor-ed to an input
@@ -116,9 +147,10 @@ encryptCBC = doCBC c_aes_encrypt_cbc
 -- more data will be returned, so that the returned bytestring is
 -- a multiple of the block cipher size.
 {-# NOINLINE genCTR #-}
-genCTR :: AESContext    -- ^ Cipher Key.
-       -> IV128      -- ^ usually a 128 bit integer.
-       -> Int        -- ^ length of bytes required.
+genCTR :: Byteable iv
+       => AES -- ^ Cipher Key.
+       -> iv  -- ^ usually a 128 bit integer.
+       -> Int -- ^ length of bytes required.
        -> ByteString
 genCTR ctx iv len = unsafeCreate (nbBlocks * 16) generate
     where
@@ -130,7 +162,11 @@ genCTR ctx iv len = unsafeCreate (nbBlocks * 16) generate
 --
 -- in CTR mode encryption and decryption is the same operation.
 {-# NOINLINE encryptCTR #-}
-encryptCTR :: AESContext -> IV128 -> ByteString -> ByteString
+encryptCTR :: Byteable iv
+           => AES
+           -> iv
+           -> ByteString
+           -> ByteString
 encryptCTR ctx iv input = unsafeCreate len doEncrypt
     where doEncrypt o = withKeyAndIV ctx iv $ \k v -> unsafeUseAsCString input $ \i ->
                             c_aes_encrypt_ctr (castPtr o) k v i (fromIntegral len)
@@ -142,8 +178,9 @@ encryptCTR ctx iv input = unsafeCreate len doEncrypt
 -- note: encrypted data is identical to CTR mode in GCM, however
 -- a tag is also computed.
 {-# NOINLINE encryptGCM #-}
-encryptGCM :: AESContext    -- ^ Key
-           -> IV         -- ^ initial vector
+encryptGCM :: Byteable iv
+           => AES        -- ^ Key
+           -> iv         -- ^ initial vector
            -> ByteString -- ^ data to authenticate (AAD)
            -> ByteString -- ^ data to encrypt
            -> (ByteString, AuthTag) -- ^ ciphertext and tag
@@ -154,38 +191,38 @@ encryptGCM = doGCM gcmAppendEncrypt
 -- the first key is the normal block encryption key
 -- the second key is used for the initial block tweak
 {-# NOINLINE encryptXTS #-}
-encryptXTS :: (AESContext,AESContext) -> IV128 -> Word32 -> ByteString -> ByteString
+encryptXTS :: Byteable iv => (AES,AES) -> iv -> Word32 -> ByteString -> ByteString
 encryptXTS = doXTS c_aes_encrypt_xts
 
 -- | decrypt using Electronic Code Book (ECB)
 {-# NOINLINE decryptECB #-}
-decryptECB :: AESContext -> ByteString -> ByteString
+decryptECB :: AES -> ByteString -> ByteString
 decryptECB = doECB c_aes_decrypt_ecb
 
 -- | decrypt using Cipher block chaining (CBC)
 {-# NOINLINE decryptCBC #-}
-decryptCBC :: AESContext -> IV128 -> ByteString -> ByteString
+decryptCBC :: Byteable iv => AES -> iv -> ByteString -> ByteString
 decryptCBC = doCBC c_aes_decrypt_cbc
 
 -- | decrypt using Counter mode (CTR).
 --
 -- in CTR mode encryption and decryption is the same operation.
-decryptCTR :: AESContext -> IV128 -> ByteString -> ByteString
+decryptCTR :: Byteable iv => AES -> iv -> ByteString -> ByteString
 decryptCTR = encryptCTR
 
 -- | decrypt using XTS
 {-# NOINLINE decryptXTS #-}
-decryptXTS :: (AESContext,AESContext) -> IV128 -> Word32 -> ByteString -> ByteString
+decryptXTS :: Byteable iv => (AES,AES) -> iv -> Word32 -> ByteString -> ByteString
 decryptXTS = doXTS c_aes_decrypt_xts
 
 -- | decrypt using Galois Counter Mode (GCM)
 {-# NOINLINE decryptGCM #-}
-decryptGCM :: AESContext -> IV -> ByteString -> ByteString -> (ByteString, AuthTag)
+decryptGCM :: Byteable iv => AES -> iv -> ByteString -> ByteString -> (ByteString, AuthTag)
 decryptGCM = doGCM gcmAppendDecrypt
 
 {-# INLINE doECB #-}
-doECB :: (Ptr b -> Ptr AESContext -> CString -> CUInt -> IO ())
-      -> AESContext -> ByteString -> ByteString
+doECB :: (Ptr b -> Ptr AES -> CString -> CUInt -> IO ())
+      -> AES -> ByteString -> ByteString
 doECB f ctx input
     | r /= 0    = error "cannot use with non multiple of block size"
     | otherwise = unsafeCreate len $ \o ->
@@ -197,8 +234,9 @@ doECB f ctx input
 
 
 {-# INLINE doCBC #-}
-doCBC :: (Ptr b -> Ptr AESContext -> Ptr IV128 -> CString -> CUInt -> IO ())
-      -> AESContext -> IV128 -> ByteString -> ByteString
+doCBC :: Byteable iv
+      => (Ptr b -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ())
+      -> AES -> iv -> ByteString -> ByteString
 doCBC f ctx iv input
     | r /= 0    = error "cannot use with non multiple of block size"
     | otherwise = unsafeCreate len $ \o ->
@@ -209,8 +247,9 @@ doCBC f ctx iv input
         len           = (B.length input)
 
 {-# INLINE doXTS #-}
-doXTS :: (Ptr b -> Ptr AESContext -> Ptr AESContext -> Ptr IV128 -> CUInt -> CString -> CUInt -> IO ())
-      -> (AESContext, AESContext) -> IV128 -> Word32 -> ByteString -> ByteString
+doXTS :: Byteable iv
+      => (Ptr b -> Ptr AES -> Ptr AES -> Ptr Word8 -> CUInt -> CString -> CUInt -> IO ())
+      -> (AES, AES) -> iv -> Word32 -> ByteString -> ByteString
 doXTS f (key1,key2) iv spoint input
     | r /= 0    = error "cannot use with non multiple of block size (yet)"
     | otherwise = unsafeCreate len $ \o -> withKey2AndIV key1 key2 iv $ \k1 k2 v -> unsafeUseAsCString input $ \i ->
@@ -219,7 +258,7 @@ doXTS f (key1,key2) iv spoint input
         len           = (B.length input)
 
 {-# INLINE doGCM #-}
-doGCM :: (GCM -> ByteString -> (ByteString, GCM)) -> AESContext -> IV -> ByteString -> ByteString -> (ByteString, AuthTag)
+doGCM :: Byteable iv => (GCM -> ByteString -> (ByteString, GCM)) -> AES -> iv -> ByteString -> ByteString -> (ByteString, AuthTag)
 doGCM f ctx iv aad input = (cipher, tag)
   where tag             = gcmFinish after 16
         (cipher, after) = f afterAAD input
@@ -231,10 +270,10 @@ allocaFrom z f = alloca $ \ptr -> poke ptr z >> f ptr
 
 -- | initialize a gcm context
 {-# NOINLINE gcmInit #-}
-gcmInit :: AESContext -> IV -> GCM
+gcmInit :: Byteable iv => AES -> iv -> GCM
 gcmInit ctx iv = unsafePerformIO $ alloca doInit
   where doInit gcm = do
-            withKeyAndIV ctx iv (\k v -> c_aes_gcm_init gcm k v (fromIntegral $ B.length $ toBytes iv))
+            withKeyAndIV ctx iv (\k v -> c_aes_gcm_init gcm k v (fromIntegral $ byteableLength iv))
             peek gcm
 
 -- | append data which is going to just be authentified to the GCM context.
@@ -244,7 +283,7 @@ gcmInit ctx iv = unsafePerformIO $ alloca doInit
 gcmAppendAAD :: GCM -> ByteString -> GCM
 gcmAppendAAD gcm input = unsafePerformIO $ allocaFrom gcm doAppend
   where doAppend p = do
-            unsafeUseAsCString input $ \i -> c_aes_gcm_aad p i (fromIntegral $ B.length input) 
+            unsafeUseAsCString input $ \i -> c_aes_gcm_aad p i (fromIntegral $ B.length input)
             peek p
 
 -- | append data to encrypt and append to the GCM context
@@ -280,34 +319,34 @@ gcmFinish gcm taglen = AuthTag $ B.take taglen (unsafeCreate 16 $ \t -> allocaFr
   where finish t p = c_aes_gcm_finish (castPtr t) p
 
 foreign import ccall "aes.h aes_initkey"
-    c_aes_init :: Ptr AESContext -> CString -> CUInt -> IO ()
+    c_aes_init :: Ptr AES -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_encrypt_ecb"
-    c_aes_encrypt_ecb :: CString -> Ptr AESContext -> CString -> CUInt -> IO ()
+    c_aes_encrypt_ecb :: CString -> Ptr AES -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_decrypt_ecb"
-    c_aes_decrypt_ecb :: CString -> Ptr AESContext -> CString -> CUInt -> IO ()
+    c_aes_decrypt_ecb :: CString -> Ptr AES -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_encrypt_cbc"
-    c_aes_encrypt_cbc :: CString -> Ptr AESContext -> Ptr IV128 -> CString -> CUInt -> IO ()
+    c_aes_encrypt_cbc :: CString -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_decrypt_cbc"
-    c_aes_decrypt_cbc :: CString -> Ptr AESContext -> Ptr IV128 -> CString -> CUInt -> IO ()
+    c_aes_decrypt_cbc :: CString -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_encrypt_xts"
-    c_aes_encrypt_xts :: CString -> Ptr AESContext -> Ptr AESContext -> Ptr IV128 -> CUInt -> CString -> CUInt -> IO ()
+    c_aes_encrypt_xts :: CString -> Ptr AES -> Ptr AES -> Ptr Word8 -> CUInt -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_decrypt_xts"
-    c_aes_decrypt_xts :: CString -> Ptr AESContext -> Ptr AESContext -> Ptr IV128 -> CUInt -> CString -> CUInt -> IO ()
+    c_aes_decrypt_xts :: CString -> Ptr AES -> Ptr AES -> Ptr Word8 -> CUInt -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_gen_ctr"
-    c_aes_gen_ctr :: CString -> Ptr AESContext -> Ptr IV128 -> CUInt -> IO ()
+    c_aes_gen_ctr :: CString -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_encrypt_ctr"
-    c_aes_encrypt_ctr :: CString -> Ptr AESContext -> Ptr IV128 -> CString -> CUInt -> IO ()
+    c_aes_encrypt_ctr :: CString -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_gcm_init"
-    c_aes_gcm_init :: Ptr GCM -> Ptr AESContext -> Ptr IV -> CUInt -> IO ()
+    c_aes_gcm_init :: Ptr GCM -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_gcm_aad"
     c_aes_gcm_aad :: Ptr GCM -> CString -> CUInt -> IO ()
