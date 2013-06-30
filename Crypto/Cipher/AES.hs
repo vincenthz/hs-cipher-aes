@@ -48,7 +48,7 @@ import Data.Byteable
 import qualified Data.ByteString as B
 import System.IO.Unsafe (unsafePerformIO)
 
-import Crypto.Cipher.Types hiding (iv) -- (Key128, Key192, Key256, IV128, IV, AuthTag(..))
+import Crypto.Cipher.Types hiding (iv)
 import Data.SecureMem
 
 -- | AES Context (pre-processed key)
