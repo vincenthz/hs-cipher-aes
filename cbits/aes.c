@@ -138,12 +138,13 @@ typedef void (*block_f)(aes_block *output, aes_key *key, aes_block *input);
 
 void initialize_table_ni(void)
 {
-	printf("initializing table ni\n");
 	branch_table[INIT_128] = aes_ni_init;
 	branch_table[INIT_256] = aes_ni_init;
 
-	branch_table[ENCRYPT_BLOCK_128] = aes_ni_encrypt_block;
-	branch_table[DECRYPT_BLOCK_128] = aes_ni_decrypt_block;
+	branch_table[ENCRYPT_BLOCK_128] = aes_ni_encrypt_block128;
+	branch_table[DECRYPT_BLOCK_128] = aes_ni_decrypt_block128;
+	branch_table[ENCRYPT_BLOCK_256] = aes_ni_encrypt_block256;
+	branch_table[DECRYPT_BLOCK_256] = aes_ni_decrypt_block256;
 	/* ECB */
 	branch_table[ENCRYPT_ECB_128] = aes_ni_encrypt_ecb128;
 	branch_table[DECRYPT_ECB_128] = aes_ni_decrypt_ecb128;

@@ -234,7 +234,7 @@ void aes_ni_init(aes_key *key, uint8_t *ikey, uint8_t size)
 	m = _mm_aesdec_si128(m, K13); \
 	m = _mm_aesdeclast_si128(m, K14);
 
-void aes_ni_encrypt_block(aes_block *out, aes_key *key, aes_block *in)
+void aes_ni_encrypt_block128(aes_block *out, aes_key *key, aes_block *in)
 {
 	__m128i *k = (__m128i *) key->data;
 	PRELOAD_ENC_KEYS128(k);
@@ -243,12 +243,30 @@ void aes_ni_encrypt_block(aes_block *out, aes_key *key, aes_block *in)
 	_mm_storeu_si128((__m128i *) out, m);
 }
 
-void aes_ni_decrypt_block(aes_block *out, aes_key *key, aes_block *in)
+void aes_ni_encrypt_block256(aes_block *out, aes_key *key, aes_block *in)
+{
+	__m128i *k = (__m128i *) key->data;
+	PRELOAD_ENC_KEYS256(k);
+	__m128i m = _mm_loadu_si128((__m128i *) in);
+	DO_ENC_BLOCK256(m);
+	_mm_storeu_si128((__m128i *) out, m);
+}
+
+void aes_ni_decrypt_block128(aes_block *out, aes_key *key, aes_block *in)
 {
 	__m128i *k = (__m128i *) key->data;
 	PRELOAD_DEC_KEYS128(k);
 	__m128i m = _mm_loadu_si128((__m128i *) in);
 	DO_DEC_BLOCK128(m);
+	_mm_storeu_si128((__m128i *) out, m);
+}
+
+void aes_ni_decrypt_block256(aes_block *out, aes_key *key, aes_block *in)
+{
+	__m128i *k = (__m128i *) key->data;
+	PRELOAD_DEC_KEYS256(k);
+	__m128i m = _mm_loadu_si128((__m128i *) in);
+	DO_DEC_BLOCK256(m);
 	_mm_storeu_si128((__m128i *) out, m);
 }
 
