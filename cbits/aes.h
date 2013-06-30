@@ -37,13 +37,14 @@
 
 typedef block128 aes_block;
 
+/* size = 456 */
 typedef struct {
 	uint8_t nbr; /* number of rounds: 10 (128), 12 (192), 14 (256) */
 	uint8_t _padding[7];
 	uint8_t data[16*14*2];
 } aes_key;
 
-/* size = 4*16+2*8+aes_key=456 = 536 */
+/* size = 4*16+2*8= 80 */
 typedef struct {
 	aes_block tag;
 	aes_block h;
@@ -51,7 +52,6 @@ typedef struct {
 	aes_block civ;
 	uint64_t length_aad;
 	uint64_t length_input;
-	aes_key key;
 } aes_gcm;
 
 /* in bytes: either 16,24,32 */
@@ -75,7 +75,8 @@ void aes_decrypt_xts(uint8_t *output, aes_key *key, aes_key *key2, aes_block *se
 
 void aes_gcm_init(aes_gcm *gcm, aes_key *key, uint8_t *iv, uint32_t len);
 void aes_gcm_aad(aes_gcm *gcm, uint8_t *input, uint32_t length);
-void aes_gcm_encrypt(uint8_t *output, aes_gcm *gcm, uint8_t *input, uint32_t length);
-void aes_gcm_finish(uint8_t *tag, aes_gcm *gcm);
+void aes_gcm_encrypt(uint8_t *output, aes_gcm *gcm, aes_key *key, uint8_t *input, uint32_t length);
+void aes_gcm_decrypt(uint8_t *output, aes_gcm *gcm, aes_key *key, uint8_t *input, uint32_t length);
+void aes_gcm_finish(uint8_t *tag, aes_gcm *gcm, aes_key *key);
 
 #endif

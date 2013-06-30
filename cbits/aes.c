@@ -255,8 +255,6 @@ void aes_gcm_init(aes_gcm *gcm, aes_key *key, uint8_t *iv, uint32_t len)
 	block128_zero(&gcm->tag);
 	block128_zero(&gcm->iv);
 
-	memcpy(&gcm->key, key, sizeof(aes_key));
-
 	/* prepare H : encrypt_K(0^128) */
 	aes_encrypt_block(&gcm->h, key, &gcm->h);
 
@@ -297,7 +295,7 @@ void aes_gcm_aad(aes_gcm *gcm, uint8_t *input, uint32_t length)
 
 }
 
-void aes_gcm_encrypt(uint8_t *output, aes_gcm *gcm, uint8_t *input, uint32_t length)
+void aes_gcm_encrypt(uint8_t *output, aes_gcm *gcm, aes_key *key, uint8_t *input, uint32_t length)
 {
 	aes_block out;
 
@@ -305,7 +303,7 @@ void aes_gcm_encrypt(uint8_t *output, aes_gcm *gcm, uint8_t *input, uint32_t len
 	for (; length >= 16; input += 16, output += 16, length -= 16) {
 		block128_inc_be(&gcm->civ);
 
-		aes_encrypt_block(&out, &gcm->key, &gcm->civ);
+		aes_encrypt_block(&out, key, &gcm->civ);
 		block128_xor(&out, (block128 *) input);
 		gcm_ghash_add(gcm, &out);
 		block128_copy((block128 *) output, &out);
@@ -316,7 +314,7 @@ void aes_gcm_encrypt(uint8_t *output, aes_gcm *gcm, uint8_t *input, uint32_t len
 
 		block128_inc_be(&gcm->civ);
 		/* create e(civ) in out */
-		aes_encrypt_block(&out, &gcm->key, &gcm->civ);
+		aes_encrypt_block(&out, key, &gcm->civ);
 		/* initialize a tmp as input and xor it to e(civ) */
 		block128_zero(&tmp);
 		block128_copy_bytes(&tmp, input, length);
@@ -330,7 +328,7 @@ void aes_gcm_encrypt(uint8_t *output, aes_gcm *gcm, uint8_t *input, uint32_t len
 	}
 }
 
-void aes_gcm_decrypt(uint8_t *output, aes_gcm *gcm, uint8_t *input, uint32_t length)
+void aes_gcm_decrypt(uint8_t *output, aes_gcm *gcm, aes_key *key, uint8_t *input, uint32_t length)
 {
 	aes_block out;
 
@@ -338,7 +336,7 @@ void aes_gcm_decrypt(uint8_t *output, aes_gcm *gcm, uint8_t *input, uint32_t len
 	for (; length >= 16; input += 16, output += 16, length -= 16) {
 		block128_inc_be(&gcm->civ);
 
-		aes_encrypt_block(&out, &gcm->key, &gcm->civ);
+		aes_encrypt_block(&out, key, &gcm->civ);
 		gcm_ghash_add(gcm, (block128 *) input);
 		block128_xor(&out, (block128 *) input);
 		block128_copy((block128 *) output, &out);
@@ -353,7 +351,7 @@ void aes_gcm_decrypt(uint8_t *output, aes_gcm *gcm, uint8_t *input, uint32_t len
 		block128_copy_bytes(&tmp, input, length);
 		gcm_ghash_add(gcm, &tmp);
 
-		aes_encrypt_block(&out, &gcm->key, &gcm->civ);
+		aes_encrypt_block(&out, key, &gcm->civ);
 		block128_xor_bytes(&tmp, out.b, length); 
 
 		for (i = 0; i < length; i++) {
@@ -362,7 +360,7 @@ void aes_gcm_decrypt(uint8_t *output, aes_gcm *gcm, uint8_t *input, uint32_t len
 	}
 }
 
-void aes_gcm_finish(uint8_t *tag, aes_gcm *gcm)
+void aes_gcm_finish(uint8_t *tag, aes_gcm *gcm, aes_key *key)
 {
 	aes_block lblock;
 	int i;
@@ -372,7 +370,7 @@ void aes_gcm_finish(uint8_t *tag, aes_gcm *gcm)
 	lblock.q[1] = cpu_to_be64(gcm->length_input << 3);
 	gcm_ghash_add(gcm, &lblock);
 
-	aes_encrypt_block(&lblock, &gcm->key, &gcm->iv);
+	aes_encrypt_block(&lblock, key, &gcm->iv);
 	block128_xor(&gcm->tag, &lblock);
 
 	for (i = 0; i < 16; i++) {
