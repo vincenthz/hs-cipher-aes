@@ -1,5 +1,5 @@
 Name:                cipher-aes
-Version:             0.1.8
+Version:             0.2.0
 Description:
     Fast AES cipher implementation with advanced mode of operations.
     .
@@ -36,7 +36,7 @@ Library
                    , crypto-cipher-types
                    , securemem >= 0.1.2
   Exposed-modules:   Crypto.Cipher.AES
-  ghc-options:       -Wall
+  ghc-options:       -Wall -optc-O3 -fno-cse -fwarn-tabs
   C-sources:         cbits/aes_generic.c
                      cbits/aes.c
                      cbits/gf.c

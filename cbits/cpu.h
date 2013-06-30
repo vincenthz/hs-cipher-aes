@@ -37,9 +37,9 @@
 #endif
 
 #ifdef USE_AESNI
-int have_aesni(void);
+int have_aesni(void (*init_table)(void));
 #else
-#define have_aesni() 	(0)
+#define have_aesni(init_table) 	(0)
 #endif
 
 #endif

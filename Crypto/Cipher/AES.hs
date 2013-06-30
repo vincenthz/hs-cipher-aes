@@ -157,11 +157,12 @@ genCTR :: Byteable iv
        -> iv  -- ^ usually a 128 bit integer.
        -> Int -- ^ length of bytes required.
        -> ByteString
-genCTR ctx iv len = unsafeCreate (nbBlocks * 16) generate
-    where
-          generate o = withKeyAndIV ctx iv $ \k i -> c_aes_gen_ctr (castPtr o) k i (fromIntegral nbBlocks)
-          (nbBlocks',r) = len `divMod` 16
-          nbBlocks = if r == 0 then nbBlocks' else nbBlocks' + 1
+genCTR ctx iv len
+    | len <= 0  = B.empty
+    | otherwise = unsafeCreate (nbBlocks * 16) generate
+  where generate o = withKeyAndIV ctx iv $ \k i -> c_aes_gen_ctr (castPtr o) k i (fromIntegral nbBlocks)
+        (nbBlocks',r) = len `quotRem` 16
+        nbBlocks = if r == 0 then nbBlocks' else nbBlocks' + 1
 
 -- | encrypt using Counter mode (CTR)
 --
@@ -172,10 +173,12 @@ encryptCTR :: Byteable iv
            -> iv
            -> ByteString
            -> ByteString
-encryptCTR ctx iv input = unsafeCreate len doEncrypt
-    where doEncrypt o = withKeyAndIV ctx iv $ \k v -> unsafeUseAsCString input $ \i ->
-                            c_aes_encrypt_ctr (castPtr o) k v i (fromIntegral len)
-          len = B.length input
+encryptCTR ctx iv input
+    | len <= 0  = B.empty
+    | otherwise = unsafeCreate len doEncrypt
+  where doEncrypt o = withKeyAndIV ctx iv $ \k v -> unsafeUseAsCString input $ \i ->
+                      c_aes_encrypt_ctr (castPtr o) k v i (fromIntegral len)
+        len = B.length input
 
 -- | encrypt using Galois counter mode (GCM)
 -- return the encrypted bytestring and the tag associated
@@ -234,7 +237,7 @@ doECB f ctx input
                   keyToPtr ctx $ \k ->
                   unsafeUseAsCString input $ \i ->
                   f (castPtr o) k i (fromIntegral nbBlocks)
-  where (nbBlocks, r) = len `divMod` 16
+  where (nbBlocks, r) = len `quotRem` 16
         len           = (B.length input)
 
 
@@ -243,24 +246,26 @@ doCBC :: Byteable iv
       => (Ptr b -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ())
       -> AES -> iv -> ByteString -> ByteString
 doCBC f ctx iv input
+    | len == 0  = B.empty
     | r /= 0    = error "cannot use with non multiple of block size"
     | otherwise = unsafeCreate len $ \o ->
                   withKeyAndIV ctx iv $ \k v ->
                   unsafeUseAsCString input $ \i ->
                   f (castPtr o) k v i (fromIntegral nbBlocks)
-  where (nbBlocks, r) = len `divMod` 16
-        len           = (B.length input)
+  where (nbBlocks, r) = len `quotRem` 16
+        len           = B.length input
 
 {-# INLINE doXTS #-}
 doXTS :: Byteable iv
       => (Ptr b -> Ptr AES -> Ptr AES -> Ptr Word8 -> CUInt -> CString -> CUInt -> IO ())
       -> (AES, AES) -> iv -> Word32 -> ByteString -> ByteString
 doXTS f (key1,key2) iv spoint input
+    | len == 0  = B.empty
     | r /= 0    = error "cannot use with non multiple of block size (yet)"
     | otherwise = unsafeCreate len $ \o -> withKey2AndIV key1 key2 iv $ \k1 k2 v -> unsafeUseAsCString input $ \i ->
             f (castPtr o) k1 k2 v (fromIntegral spoint) i (fromIntegral nbBlocks)
-  where (nbBlocks, r) = len `divMod` 16
-        len           = (B.length input)
+  where (nbBlocks, r) = len `quotRem` 16
+        len           = B.length input
 
 {-# INLINE doGCM #-}
 doGCM :: Byteable iv => (GCM -> ByteString -> (ByteString, GCM)) -> AES -> iv -> ByteString -> ByteString -> (ByteString, AuthTag)

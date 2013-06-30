@@ -34,6 +34,7 @@
 #include <tmmintrin.h>
 #include "aes.h"
 #include "aes_x86ni.h"
+#include "block128.h"
 #include "cpu.h"
 
 #ifdef ARCH_X86
@@ -147,7 +148,25 @@ void aes_ni_init(aes_key *key, uint8_t *origkey, uint8_t size)
 	m = _mm_aesdec_si128(m, K9); \
 	m = _mm_aesdeclast_si128(m, K10);
 
-void aes_ni_encrypt_ecb(uint8_t *out, aes_key *key, uint8_t *in, uint32_t blocks)
+void aes_ni_encrypt_block(aes_block *out, aes_key *key, aes_block *in)
+{
+	__m128i *k = (__m128i *) key->data;
+	PRELOAD_ENC_KEYS(k);
+	__m128i m = _mm_loadu_si128((__m128i *) in);
+	DO_ENC_BLOCK(m);
+	_mm_storeu_si128((__m128i *) out, m);
+}
+
+void aes_ni_decrypt_block(aes_block *out, aes_key *key, aes_block *in)
+{
+	__m128i *k = (__m128i *) key->data;
+	PRELOAD_DEC_KEYS(k);
+	__m128i m = _mm_loadu_si128((__m128i *) in);
+	DO_DEC_BLOCK(m);
+	_mm_storeu_si128((__m128i *) out, m);
+}
+
+void aes_ni_encrypt_ecb(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks)
 {
 	__m128i *k = (__m128i *) key->data;
 
@@ -159,12 +178,13 @@ void aes_ni_encrypt_ecb(uint8_t *out, aes_key *key, uint8_t *in, uint32_t blocks
 		DO_ENC_BLOCK(m);
 
 		_mm_storeu_si128((__m128i *) out, m);
-		in += 16;
-		out += 16;
+		in += 1;
+		out += 1;
 	}
 }
 
-void aes_ni_decrypt_ecb(uint8_t *out, aes_key *key, uint8_t *in, uint32_t blocks)
+
+void aes_ni_decrypt_ecb(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks)
 {
 	__m128i *k = (__m128i *) key->data;
 
@@ -176,12 +196,12 @@ void aes_ni_decrypt_ecb(uint8_t *out, aes_key *key, uint8_t *in, uint32_t blocks
 		DO_DEC_BLOCK(m);
 
 		_mm_storeu_si128((__m128i *) out, m);
-		in += 16;
-		out += 16;
+		in += 1;
+		out += 1;
 	}
 }
 
-void aes_ni_encrypt_cbc(uint8_t *out, aes_key *key, uint8_t *_iv, uint8_t *in, uint32_t blocks)
+void aes_ni_encrypt_cbc(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks)
 {
 	__m128i *k = (__m128i *) key->data;
 	__m128i iv = _mm_loadu_si128((__m128i *) _iv);
@@ -197,12 +217,12 @@ void aes_ni_encrypt_cbc(uint8_t *out, aes_key *key, uint8_t *_iv, uint8_t *in, u
 		_mm_storeu_si128((__m128i *) out, m);
 		iv = m;
 
-		in += 16;
-		out += 16;
+		in += 1;
+		out += 1;
 	}
 }
 
-void aes_ni_decrypt_cbc(uint8_t *out, aes_key *key, uint8_t *_iv, uint8_t *in, uint32_t blocks)
+void aes_ni_decrypt_cbc(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks)
 {
 	__m128i *k = (__m128i *) key->data;
 	__m128i iv = _mm_loadu_si128((__m128i *) _iv);
@@ -219,8 +239,8 @@ void aes_ni_decrypt_cbc(uint8_t *out, aes_key *key, uint8_t *_iv, uint8_t *in, u
 		_mm_storeu_si128((__m128i *) out, m);
 		iv = ivnext;
 
-		in += 16;
-		out += 16;
+		in += 1;
+		out += 1;
 	}
 }
 
@@ -240,8 +260,8 @@ static __m128i gfmulx(__m128i v)
 	return v;
 }
 
-void aes_ni_encrypt_xts(uint8_t *out, aes_key *key1, aes_key *key2,
-                        uint8_t *_tweak, uint32_t spoint, uint8_t *in, uint32_t blocks)
+void aes_ni_encrypt_xts(aes_block *out, aes_key *key1, aes_key *key2,
+                        aes_block *_tweak, uint32_t spoint, aes_block *in, uint32_t blocks)
 {
 	__m128i tweak = _mm_loadu_si128((__m128i *) _tweak);
 
@@ -258,7 +278,7 @@ void aes_ni_encrypt_xts(uint8_t *out, aes_key *key1, aes_key *key2,
 		__m128i *k1 = (__m128i *) key1->data;
 		PRELOAD_ENC_KEYS(k1);
 
-		for ( ; blocks-- > 0; in += 16, out += 16, tweak = gfmulx(tweak)) {
+		for ( ; blocks-- > 0; in += 1, out += 1, tweak = gfmulx(tweak)) {
 			__m128i m = _mm_loadu_si128((__m128i *) in);
 
 			m = _mm_xor_si128(m, tweak);
