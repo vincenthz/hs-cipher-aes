@@ -140,12 +140,21 @@ void initialize_table_ni(void)
 {
 	printf("initializing table ni\n");
 	branch_table[INIT_128] = aes_ni_init;
+	branch_table[INIT_256] = aes_ni_init;
+
 	branch_table[ENCRYPT_BLOCK_128] = aes_ni_encrypt_block;
 	branch_table[DECRYPT_BLOCK_128] = aes_ni_decrypt_block;
-	branch_table[ENCRYPT_ECB_128] = aes_ni_encrypt_ecb;
-	branch_table[DECRYPT_ECB_128] = aes_ni_decrypt_ecb;
-	branch_table[ENCRYPT_CBC_128] = aes_ni_encrypt_cbc;
-	branch_table[DECRYPT_CBC_128] = aes_ni_decrypt_cbc;
+	/* ECB */
+	branch_table[ENCRYPT_ECB_128] = aes_ni_encrypt_ecb128;
+	branch_table[DECRYPT_ECB_128] = aes_ni_decrypt_ecb128;
+	branch_table[ENCRYPT_ECB_256] = aes_ni_encrypt_ecb256;
+	branch_table[DECRYPT_ECB_256] = aes_ni_decrypt_ecb256;
+	/* CBC */
+	branch_table[ENCRYPT_CBC_128] = aes_ni_encrypt_cbc128;
+	branch_table[DECRYPT_CBC_128] = aes_ni_decrypt_cbc128;
+	branch_table[ENCRYPT_CBC_256] = aes_ni_encrypt_cbc256;
+	branch_table[DECRYPT_CBC_256] = aes_ni_decrypt_cbc256;
+	/* XTS */
 	branch_table[ENCRYPT_XTS_128] = aes_ni_encrypt_xts;
 }
 

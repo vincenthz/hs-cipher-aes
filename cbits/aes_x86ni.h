@@ -43,10 +43,14 @@
 void aes_ni_init(aes_key *key, uint8_t *origkey, uint8_t size);
 void aes_ni_encrypt_block(aes_block *out, aes_key *key, aes_block *in);
 void aes_ni_decrypt_block(aes_block *out, aes_key *key, aes_block *in);
-void aes_ni_encrypt_ecb(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
-void aes_ni_decrypt_ecb(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
-void aes_ni_encrypt_cbc(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
-void aes_ni_decrypt_cbc(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_ecb128(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_ecb256(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
+void aes_ni_decrypt_ecb128(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
+void aes_ni_decrypt_ecb256(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_cbc128(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_cbc256(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
+void aes_ni_decrypt_cbc128(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
+void aes_ni_decrypt_cbc256(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
 void aes_ni_encrypt_xts(aes_block *out, aes_key *key1, aes_key *key2,
                         aes_block *_tweak, uint32_t spoint, aes_block *in, uint32_t blocks);
 
