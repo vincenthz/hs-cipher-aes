@@ -195,7 +195,7 @@ static __m128i gfmulx(__m128i v)
 	m = _mm_aesenclast_si128(m, K14);
 
 /* load K0 at K9 from index 'at' */
-#define PRELOAD_DEC_KEYS(k, at) \
+#define PRELOAD_DEC_KEYS_AT(k, at) \
 	__m128i K0  = _mm_loadu_si128(((__m128i *) k)+at+0); \
 	__m128i K1  = _mm_loadu_si128(((__m128i *) k)+at+1); \
 	__m128i K2  = _mm_loadu_si128(((__m128i *) k)+at+2); \
@@ -208,11 +208,11 @@ static __m128i gfmulx(__m128i v)
 	__m128i K9  = _mm_loadu_si128(((__m128i *) k)+at+9); \
 
 #define PRELOAD_DEC_KEYS128(k) \
-	PRELOAD_DEC_KEYS(k, 10) \
+	PRELOAD_DEC_KEYS_AT(k, 10) \
 	__m128i K10 = _mm_loadu_si128(((__m128i *) k)+0);
 
 #define PRELOAD_DEC_KEYS256(k) \
-	PRELOAD_DEC_KEYS(k, 14) \
+	PRELOAD_DEC_KEYS_AT(k, 14) \
 	__m128i K10 = _mm_loadu_si128(((__m128i *) k)+14+10); \
 	__m128i K11 = _mm_loadu_si128(((__m128i *) k)+14+11); \
 	__m128i K12 = _mm_loadu_si128(((__m128i *) k)+14+12); \
