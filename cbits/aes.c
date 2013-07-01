@@ -156,7 +156,8 @@ void initialize_table_ni(void)
 	branch_table[ENCRYPT_CBC_256] = aes_ni_encrypt_cbc256;
 	branch_table[DECRYPT_CBC_256] = aes_ni_decrypt_cbc256;
 	/* XTS */
-	branch_table[ENCRYPT_XTS_128] = aes_ni_encrypt_xts;
+	branch_table[ENCRYPT_XTS_128] = aes_ni_encrypt_xts128;
+	branch_table[ENCRYPT_XTS_256] = aes_ni_encrypt_xts256;
 }
 
 void aes_initkey(aes_key *key, uint8_t *origkey, uint8_t size)

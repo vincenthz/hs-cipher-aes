@@ -53,8 +53,10 @@ void aes_ni_encrypt_cbc128(aes_block *out, aes_key *key, aes_block *_iv, aes_blo
 void aes_ni_encrypt_cbc256(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
 void aes_ni_decrypt_cbc128(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
 void aes_ni_decrypt_cbc256(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
-void aes_ni_encrypt_xts(aes_block *out, aes_key *key1, aes_key *key2,
-                        aes_block *_tweak, uint32_t spoint, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_xts128(aes_block *out, aes_key *key1, aes_key *key2,
+                           aes_block *_tweak, uint32_t spoint, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_xts256(aes_block *out, aes_key *key1, aes_key *key2,
+                           aes_block *_tweak, uint32_t spoint, aes_block *in, uint32_t blocks);
 
 void gf_mul_x86ni(block128 *res, block128 *a_, block128 *b_);
 

@@ -128,6 +128,21 @@ void aes_ni_init(aes_key *key, uint8_t *ikey, uint8_t size)
 	}
 }
 
+/* TO OPTIMISE: use pcmulqdq... or some faster code.
+ * this is the lamest way of doing it, but i'm out of time.
+ * this is basically a copy of gf_mulx in gf.c */
+static __m128i gfmulx(__m128i v)
+{
+	uint64_t v_[2] ALIGNMENT(16);
+	const uint64_t gf_mask = 0x8000000000000000;
+
+	_mm_store_si128((__m128i *) v_, v);
+	uint64_t r = ((v_[1] & gf_mask) ? 0x87 : 0);
+	v_[1] = (v_[1] << 1) | (v_[0] & gf_mask ? 1 : 0);
+	v_[0] = (v_[0] << 1) ^ r;
+	v = _mm_load_si128((__m128i *) v_);
+	return v;
+}
 
 #define PRELOAD_ENC_KEYS128(k) \
 	__m128i K0  = _mm_loadu_si128(((__m128i *) k)+0); \
@@ -263,52 +278,6 @@ void aes_ni_init(aes_key *key, uint8_t *ikey, uint8_t size)
 #undef PRELOAD_DEC
 #undef DO_ENC_BLOCK
 #undef DO_DEC_BLOCK
-
-/* TO OPTIMISE: use pcmulqdq... or some faster code.
- * this is the lamest way of doing it, but i'm out of time.
- * this is basically a copy of gf_mulx in gf.c */
-static __m128i gfmulx(__m128i v)
-{
-	uint64_t v_[2] ALIGNMENT(16);
-	const uint64_t gf_mask = 0x8000000000000000;
-
-	_mm_store_si128((__m128i *) v_, v);
-	uint64_t r = ((v_[1] & gf_mask) ? 0x87 : 0);
-	v_[1] = (v_[1] << 1) | (v_[0] & gf_mask ? 1 : 0);
-	v_[0] = (v_[0] << 1) ^ r;
-	v = _mm_load_si128((__m128i *) v_);
-	return v;
-}
-
-void aes_ni_encrypt_xts(aes_block *out, aes_key *key1, aes_key *key2,
-                        aes_block *_tweak, uint32_t spoint, aes_block *in, uint32_t blocks)
-{
-	__m128i tweak = _mm_loadu_si128((__m128i *) _tweak);
-
-	do {
-		__m128i *k2 = (__m128i *) key2->data;
-		PRELOAD_ENC_KEYS128(k2);
-		DO_ENC_BLOCK128(tweak);
-
-		while (spoint-- > 0)
-			tweak = gfmulx(tweak);
-	} while (0) ;
-
-	do {
-		__m128i *k1 = (__m128i *) key1->data;
-		PRELOAD_ENC_KEYS128(k1);
-
-		for ( ; blocks-- > 0; in += 1, out += 1, tweak = gfmulx(tweak)) {
-			__m128i m = _mm_loadu_si128((__m128i *) in);
-
-			m = _mm_xor_si128(m, tweak);
-			DO_ENC_BLOCK128(m);
-			m = _mm_xor_si128(m, tweak);
-
-			_mm_storeu_si128((__m128i *) out, m);
-		}
-	} while (0);
-}
 
 #endif
 

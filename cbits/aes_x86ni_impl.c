@@ -105,3 +105,34 @@ void SIZED(aes_ni_decrypt_cbc)(aes_block *out, aes_key *key, aes_block *_iv, aes
 		iv = ivnext;
 	}
 }
+
+void SIZED(aes_ni_encrypt_xts)(aes_block *out, aes_key *key1, aes_key *key2,
+                               aes_block *_tweak, uint32_t spoint, aes_block *in, uint32_t blocks)
+{
+	__m128i tweak = _mm_loadu_si128((__m128i *) _tweak);
+
+	do {
+		__m128i *k2 = (__m128i *) key2->data;
+		PRELOAD_ENC(k2);
+		DO_ENC_BLOCK(tweak);
+
+		while (spoint-- > 0)
+			tweak = gfmulx(tweak);
+	} while (0) ;
+
+	do {
+		__m128i *k1 = (__m128i *) key1->data;
+		PRELOAD_ENC(k1);
+
+		for ( ; blocks-- > 0; in += 1, out += 1, tweak = gfmulx(tweak)) {
+			__m128i m = _mm_loadu_si128((__m128i *) in);
+
+			m = _mm_xor_si128(m, tweak);
+			DO_ENC_BLOCK(m);
+			m = _mm_xor_si128(m, tweak);
+
+			_mm_storeu_si128((__m128i *) out, m);
+		}
+	} while (0);
+}
+
