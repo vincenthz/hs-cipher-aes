@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Vincent Hanquez <vincent@snarc.org>
+ * Copyright (c) 2012-2013 Vincent Hanquez <vincent@snarc.org>
  * 
  * All rights reserved.
  * 
@@ -234,162 +234,35 @@ void aes_ni_init(aes_key *key, uint8_t *ikey, uint8_t size)
 	m = _mm_aesdec_si128(m, K13); \
 	m = _mm_aesdeclast_si128(m, K14);
 
-void aes_ni_encrypt_block128(aes_block *out, aes_key *key, aes_block *in)
-{
-	__m128i *k = (__m128i *) key->data;
-	PRELOAD_ENC_KEYS128(k);
-	__m128i m = _mm_loadu_si128((__m128i *) in);
-	DO_ENC_BLOCK128(m);
-	_mm_storeu_si128((__m128i *) out, m);
-}
+#define SIZE 128
+#define SIZED(m) m##128
+#define PRELOAD_ENC PRELOAD_ENC_KEYS128
+#define DO_ENC_BLOCK DO_ENC_BLOCK128
+#define PRELOAD_DEC PRELOAD_DEC_KEYS128
+#define DO_DEC_BLOCK DO_DEC_BLOCK128
+#include "aes_x86ni_impl.c"
 
-void aes_ni_encrypt_block256(aes_block *out, aes_key *key, aes_block *in)
-{
-	__m128i *k = (__m128i *) key->data;
-	PRELOAD_ENC_KEYS256(k);
-	__m128i m = _mm_loadu_si128((__m128i *) in);
-	DO_ENC_BLOCK256(m);
-	_mm_storeu_si128((__m128i *) out, m);
-}
+#undef SIZE
+#undef SIZED
+#undef PRELOAD_ENC
+#undef PRELOAD_DEC
+#undef DO_ENC_BLOCK
+#undef DO_DEC_BLOCK
 
-void aes_ni_decrypt_block128(aes_block *out, aes_key *key, aes_block *in)
-{
-	__m128i *k = (__m128i *) key->data;
-	PRELOAD_DEC_KEYS128(k);
-	__m128i m = _mm_loadu_si128((__m128i *) in);
-	DO_DEC_BLOCK128(m);
-	_mm_storeu_si128((__m128i *) out, m);
-}
+#define SIZED(m) m##256
+#define SIZE 256
+#define PRELOAD_ENC PRELOAD_ENC_KEYS256
+#define DO_ENC_BLOCK DO_ENC_BLOCK256
+#define PRELOAD_DEC PRELOAD_DEC_KEYS256
+#define DO_DEC_BLOCK DO_DEC_BLOCK256
+#include "aes_x86ni_impl.c"
 
-void aes_ni_decrypt_block256(aes_block *out, aes_key *key, aes_block *in)
-{
-	__m128i *k = (__m128i *) key->data;
-	PRELOAD_DEC_KEYS256(k);
-	__m128i m = _mm_loadu_si128((__m128i *) in);
-	DO_DEC_BLOCK256(m);
-	_mm_storeu_si128((__m128i *) out, m);
-}
-
-void aes_ni_encrypt_ecb128(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks)
-{
-	__m128i *k = (__m128i *) key->data;
-
-	PRELOAD_ENC_KEYS128(k);
-	for (; blocks-- > 0; in += 1, out += 1) {
-		__m128i m = _mm_loadu_si128((__m128i *) in);
-		DO_ENC_BLOCK128(m);
-		_mm_storeu_si128((__m128i *) out, m);
-	}
-}
-
-void aes_ni_encrypt_ecb256(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks)
-{
-	__m128i *k = (__m128i *) key->data;
-
-	PRELOAD_ENC_KEYS256(k);
-	for (; blocks-- > 0; in += 1, out += 1) {
-		__m128i m = _mm_loadu_si128((__m128i *) in);
-		DO_ENC_BLOCK256(m);
-		_mm_storeu_si128((__m128i *) out, m);
-	}
-}
-
-void aes_ni_decrypt_ecb128(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks)
-{
-	__m128i *k = (__m128i *) key->data;
-
-	PRELOAD_DEC_KEYS128(k);
-
-	for (; blocks-- > 0; in += 1, out += 1) {
-		__m128i m = _mm_loadu_si128((__m128i *) in);
-		DO_DEC_BLOCK128(m);
-		_mm_storeu_si128((__m128i *) out, m);
-	}
-}
-
-void aes_ni_decrypt_ecb256(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks)
-{
-	__m128i *k = (__m128i *) key->data;
-
-	PRELOAD_DEC_KEYS256(k);
-
-	for (; blocks-- > 0; in += 1, out += 1) {
-		__m128i m = _mm_loadu_si128((__m128i *) in);
-		DO_DEC_BLOCK256(m);
-		_mm_storeu_si128((__m128i *) out, m);
-	}
-}
-
-void aes_ni_encrypt_cbc128(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks)
-{
-	__m128i *k = (__m128i *) key->data;
-	__m128i iv = _mm_loadu_si128((__m128i *) _iv);
-
-	PRELOAD_ENC_KEYS128(k);
-
-	for (; blocks-- > 0; in += 1, out += 1) {
-		__m128i m = _mm_loadu_si128((__m128i *) in);
-		m = _mm_xor_si128(m, iv);
-		DO_ENC_BLOCK128(m);
-		_mm_storeu_si128((__m128i *) out, m);
-		iv = m;
-	}
-}
-
-void aes_ni_encrypt_cbc256(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks)
-{
-	__m128i *k = (__m128i *) key->data;
-	__m128i iv = _mm_loadu_si128((__m128i *) _iv);
-
-	PRELOAD_ENC_KEYS256(k);
-
-	for (; blocks-- > 0; in += 1, out += 1) {
-		__m128i m = _mm_loadu_si128((__m128i *) in);
-		m = _mm_xor_si128(m, iv);
-		DO_ENC_BLOCK256(m);
-		_mm_storeu_si128((__m128i *) out, m);
-		iv = m;
-	}
-}
-
-
-void aes_ni_decrypt_cbc128(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks)
-{
-	__m128i *k = (__m128i *) key->data;
-	__m128i iv = _mm_loadu_si128((__m128i *) _iv);
-
-	PRELOAD_DEC_KEYS128(k);
-
-	for (; blocks-- > 0; in += 1, out += 1) {
-		__m128i m = _mm_loadu_si128((__m128i *) in);
-		__m128i ivnext = m;
-
-		DO_DEC_BLOCK128(m);
-		m = _mm_xor_si128(m, iv);
-
-		_mm_storeu_si128((__m128i *) out, m);
-		iv = ivnext;
-	}
-}
-
-void aes_ni_decrypt_cbc256(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks)
-{
-	__m128i *k = (__m128i *) key->data;
-	__m128i iv = _mm_loadu_si128((__m128i *) _iv);
-
-	PRELOAD_DEC_KEYS256(k);
-
-	for (; blocks-- > 0; in += 1, out += 1) {
-		__m128i m = _mm_loadu_si128((__m128i *) in);
-		__m128i ivnext = m;
-
-		DO_DEC_BLOCK256(m);
-		m = _mm_xor_si128(m, iv);
-
-		_mm_storeu_si128((__m128i *) out, m);
-		iv = ivnext;
-	}
-}
+#undef SIZE
+#undef SIZED
+#undef PRELOAD_ENC
+#undef PRELOAD_DEC
+#undef DO_ENC_BLOCK
+#undef DO_DEC_BLOCK
 
 /* TO OPTIMISE: use pcmulqdq... or some faster code.
  * this is the lamest way of doing it, but i'm out of time.
