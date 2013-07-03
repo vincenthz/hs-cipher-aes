@@ -32,6 +32,7 @@
 
 #include <wmmintrin.h>
 #include <tmmintrin.h>
+#include <string.h>
 #include "aes.h"
 #include "aes_x86ni.h"
 #include "block128.h"

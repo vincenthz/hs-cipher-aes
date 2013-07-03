@@ -42,6 +42,7 @@ void aes_generic_encrypt_ecb(aes_block *output, aes_key *key, aes_block *input, 
 void aes_generic_decrypt_ecb(aes_block *output, aes_key *key, aes_block *input, uint32_t nb_blocks);
 void aes_generic_encrypt_cbc(aes_block *output, aes_key *key, aes_block *iv, aes_block *input, uint32_t nb_blocks);
 void aes_generic_decrypt_cbc(aes_block *output, aes_key *key, aes_block *iv, aes_block *input, uint32_t nb_blocks);
+void aes_generic_encrypt_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *input, uint32_t length);
 void aes_generic_encrypt_xts(aes_block *output, aes_key *k1, aes_key *k2, aes_block *dataunit,
                              uint32_t spoint, aes_block *input, uint32_t nb_blocks);
 void aes_generic_decrypt_xts(aes_block *output, aes_key *k1, aes_key *k2, aes_block *dataunit,
@@ -59,6 +60,8 @@ enum {
 	/* cbc */
 	ENCRYPT_CBC_128, ENCRYPT_CBC_192, ENCRYPT_CBC_256,
 	DECRYPT_CBC_128, DECRYPT_CBC_192, DECRYPT_CBC_256,
+	/* ctr */
+	ENCRYPT_CTR_128, ENCRYPT_CTR_192, ENCRYPT_CTR_256,
 	/* xts */
 	ENCRYPT_XTS_128, ENCRYPT_XTS_192, ENCRYPT_XTS_256,
 	DECRYPT_XTS_128, DECRYPT_XTS_192, DECRYPT_XTS_256,
@@ -90,6 +93,10 @@ void *branch_table[] = {
 	[DECRYPT_CBC_128]   = aes_generic_decrypt_cbc,
 	[DECRYPT_CBC_192]   = aes_generic_decrypt_cbc,
 	[DECRYPT_CBC_256]   = aes_generic_decrypt_cbc,
+	/* CTR */
+	[ENCRYPT_CTR_128]   = aes_generic_encrypt_ctr,
+	[ENCRYPT_CTR_192]   = aes_generic_encrypt_ctr,
+	[ENCRYPT_CTR_256]   = aes_generic_encrypt_ctr,
 	/* XTS */
 	[ENCRYPT_XTS_128]   = aes_generic_encrypt_xts,
 	[ENCRYPT_XTS_192]   = aes_generic_encrypt_xts,
@@ -102,6 +109,7 @@ void *branch_table[] = {
 typedef void (*init_f)(aes_key *, uint8_t *, uint8_t);
 typedef void (*ecb_f)(aes_block *output, aes_key *key, aes_block *input, uint32_t nb_blocks);
 typedef void (*cbc_f)(aes_block *output, aes_key *key, aes_block *iv, aes_block *input, uint32_t nb_blocks);
+typedef void (*ctr_f)(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *input, uint32_t length);
 typedef void (*xts_f)(aes_block *output, aes_key *k1, aes_key *k2, aes_block *dataunit, uint32_t spoint, aes_block *input, uint32_t nb_blocks);
 typedef void (*block_f)(aes_block *output, aes_key *key, aes_block *input);
 
@@ -116,6 +124,8 @@ typedef void (*block_f)(aes_block *output, aes_key *key, aes_block *input);
 	((cbc_f) (branch_table[ENCRYPT_CBC_128 + strength]))
 #define GET_CBC_DECRYPT(strength) \
 	((cbc_f) (branch_table[DECRYPT_CBC_128 + strength]))
+#define GET_CTR_ENCRYPT(strength) \
+	((ctr_f) (branch_table[ENCRYPT_CTR_128 + strength]))
 #define GET_XTS_ENCRYPT(strength) \
 	((xts_f) (branch_table[ENCRYPT_XTS_128 + strength]))
 #define GET_XTS_DECRYPT(strength) \
@@ -130,6 +140,7 @@ typedef void (*block_f)(aes_block *output, aes_key *key, aes_block *input);
 #define GET_ECB_DECRYPT(strength) aes_generic_decrypt_ecb
 #define GET_CBC_ENCRYPT(strength) aes_generic_encrypt_cbc
 #define GET_CBC_DECRYPT(strength) aes_generic_decrypt_cbc
+#define GET_CTR_ENCRYPT(strength) aes_generic_encrypt_ctr
 #define GET_XTS_ENCRYPT(strength) aes_generic_encrypt_xts
 #define GET_XTS_DECRYPT(strength) aes_generic_decrypt_xts
 #define aes_encrypt_block(o,k,i) aes_generic_encrypt_block(o,k,i)
@@ -155,6 +166,9 @@ void initialize_table_ni(void)
 	branch_table[DECRYPT_CBC_128] = aes_ni_decrypt_cbc128;
 	branch_table[ENCRYPT_CBC_256] = aes_ni_encrypt_cbc256;
 	branch_table[DECRYPT_CBC_256] = aes_ni_decrypt_cbc256;
+	/* CTR */
+	branch_table[ENCRYPT_CTR_128] = aes_ni_encrypt_ctr128;
+	branch_table[ENCRYPT_CTR_256] = aes_ni_encrypt_ctr256;
 	/* XTS */
 	branch_table[ENCRYPT_XTS_128] = aes_ni_encrypt_xts128;
 	branch_table[ENCRYPT_XTS_256] = aes_ni_encrypt_xts256;
@@ -212,26 +226,8 @@ void aes_gen_ctr(aes_block *output, aes_key *key, aes_block *iv, uint32_t nb_blo
 
 void aes_encrypt_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *input, uint32_t len)
 {
-	aes_block block, o;
-	uint32_t nb_blocks = len / 16;
-	int i;
-
-	/* preload IV in block */
-	block128_copy(&block, iv);
-
-	for ( ; nb_blocks-- > 0; block128_inc_be(&block), output += 16, input += 16) {
-		aes_encrypt_block(&o, key, &block);
-		block128_vxor((block128 *) output, &o, (block128 *) input);
-	}
-
-	if ((len % 16) != 0) {
-		aes_encrypt_block(&o, key, &block);
-		for (i = 0; i < (len % 16); i++) {
-			*output = ((uint8_t *) &o)[i] ^ *input;
-			output++;
-			input++;
-		}
-	}
+	ctr_f e = GET_CTR_ENCRYPT(key->strength);
+	e(output, key, iv, input, len);
 }
 
 void aes_encrypt_xts(aes_block *output, aes_key *k1, aes_key *k2, aes_block *dataunit,
@@ -424,6 +420,30 @@ void aes_generic_decrypt_cbc(aes_block *output, aes_key *key, aes_block *ivini, 
 		aes_generic_decrypt_block(&blocko, key, &block);
 		block128_vxor((block128 *) output, &blocko, &iv);
 		block128_copy(&iv, &block);
+	}
+}
+
+void aes_generic_encrypt_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *input, uint32_t len)
+{
+	aes_block block, o;
+	uint32_t nb_blocks = len / 16;
+	int i;
+
+	/* preload IV in block */
+	block128_copy(&block, iv);
+
+	for ( ; nb_blocks-- > 0; block128_inc_be(&block), output += 16, input += 16) {
+		aes_encrypt_block(&o, key, &block);
+		block128_vxor((block128 *) output, &o, (block128 *) input);
+	}
+
+	if ((len % 16) != 0) {
+		aes_encrypt_block(&o, key, &block);
+		for (i = 0; i < (len % 16); i++) {
+			*output = ((uint8_t *) &o)[i] ^ *input;
+			output++;
+			input++;
+		}
 	}
 }
 
