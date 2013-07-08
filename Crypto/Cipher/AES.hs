@@ -48,7 +48,7 @@ import Data.Byteable
 import qualified Data.ByteString as B
 import System.IO.Unsafe (unsafePerformIO)
 
-import Crypto.Cipher.Types hiding (iv)
+import Crypto.Cipher.Types
 import Data.SecureMem
 
 -- | AES Context (pre-processed key)
@@ -59,31 +59,43 @@ newtype AES192 = AES192 AES
 newtype AES256 = AES256 AES
 
 instance Cipher AES128 where
+    cipherName    _ = "AES128"
     cipherKeySize _ = Just 16
     cipherInit k    = AES128 $ initAES k
 
 instance Cipher AES192 where
+    cipherName    _ = "AES192"
     cipherKeySize _ = Just 24
     cipherInit k    = AES192 $ initAES k
 
 instance Cipher AES256 where
+    cipherName    _ = "AES256"
     cipherKeySize _ = Just 32
     cipherInit k    = AES256 $ initAES k
 
 instance BlockCipher AES128 where
     blockSize _ = 16
-    blockEncrypt (AES128 aes) (Block blk) = Block $ encryptECB aes blk
-    blockDecrypt (AES128 aes) (Block blk) = Block $ decryptECB aes blk
+    ecbEncrypt (AES128 aes) = encryptECB aes
+    ecbDecrypt (AES128 aes) = decryptECB aes
+    cbcEncrypt (AES128 aes) = encryptCBC aes
+    cbcDecrypt (AES128 aes) = decryptCBC aes
+    ctrCombine (AES128 aes) = encryptCTR aes
 
 instance BlockCipher AES192 where
     blockSize _ = 16
-    blockEncrypt (AES192 aes) (Block blk) = Block $ encryptECB aes blk
-    blockDecrypt (AES192 aes) (Block blk) = Block $ decryptECB aes blk
+    ecbEncrypt (AES192 aes) = encryptECB aes
+    ecbDecrypt (AES192 aes) = decryptECB aes
+    cbcEncrypt (AES192 aes) = encryptCBC aes
+    cbcDecrypt (AES192 aes) = decryptCBC aes
+    ctrCombine (AES192 aes) = encryptCTR aes
 
 instance BlockCipher AES256 where
     blockSize _ = 16
-    blockEncrypt (AES256 aes) (Block blk) = Block $ encryptECB aes blk
-    blockDecrypt (AES256 aes) (Block blk) = Block $ decryptECB aes blk
+    ecbEncrypt (AES256 aes) = encryptECB aes
+    ecbDecrypt (AES256 aes) = decryptECB aes
+    cbcEncrypt (AES256 aes) = encryptCBC aes
+    cbcDecrypt (AES256 aes) = decryptCBC aes
+    ctrCombine (AES256 aes) = encryptCTR aes
 
 -- | GCM Context
 data GCM = GCM AES GCMState
