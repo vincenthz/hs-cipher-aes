@@ -80,6 +80,8 @@ instance BlockCipher AES128 where
     cbcEncrypt (AES128 aes) = encryptCBC aes
     cbcDecrypt (AES128 aes) = decryptCBC aes
     ctrCombine (AES128 aes) = encryptCTR aes
+    xtsEncrypt (AES128 aes1, AES128 aes2) = encryptXTS (aes1,aes2)
+    xtsDecrypt (AES128 aes1, AES128 aes2) = decryptXTS (aes1,aes2)
 
 instance BlockCipher AES192 where
     blockSize _ = 16
@@ -88,6 +90,8 @@ instance BlockCipher AES192 where
     cbcEncrypt (AES192 aes) = encryptCBC aes
     cbcDecrypt (AES192 aes) = decryptCBC aes
     ctrCombine (AES192 aes) = encryptCTR aes
+    xtsEncrypt (AES192 aes1, AES192 aes2) = encryptXTS (aes1,aes2)
+    xtsDecrypt (AES192 aes1, AES192 aes2) = decryptXTS (aes1,aes2)
 
 instance BlockCipher AES256 where
     blockSize _ = 16
@@ -96,6 +100,8 @@ instance BlockCipher AES256 where
     cbcEncrypt (AES256 aes) = encryptCBC aes
     cbcDecrypt (AES256 aes) = decryptCBC aes
     ctrCombine (AES256 aes) = encryptCTR aes
+    xtsEncrypt (AES256 aes1, AES256 aes2) = encryptXTS (aes1,aes2)
+    xtsDecrypt (AES256 aes1, AES256 aes2) = decryptXTS (aes1,aes2)
 
 -- | GCM Context
 data GCM = GCM AES GCMState
