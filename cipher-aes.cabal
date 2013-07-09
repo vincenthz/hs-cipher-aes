@@ -67,6 +67,7 @@ Benchmark bench-cipher-aes
                    , bytestring
                    , cipher-aes
                    , crypto-cipher-types
+                   , crypto-cipher-benchmarks
                    , criterion
                    , mtl
 

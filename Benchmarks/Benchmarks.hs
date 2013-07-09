@@ -1,4 +1,12 @@
-{-# LANGUAGE CPP #-}
+import Crypto.Cipher.Benchmarks
+
+import Crypto.Cipher.AES (AES128, AES192, AES256)
+
+main = defaultMain
+    [GBlockCipher (undefined :: AES128)
+    ,GBlockCipher (undefined :: AES192)
+    ,GBlockCipher (undefined :: AES256)]
+{-
 import Criterion
 import Criterion.Environment
 import Criterion.Config
@@ -101,3 +109,4 @@ main = withConfig defaultConfig $ do
 	                "cipher" "16 bytes" "32 bytes" "64 bytes" "512 bytes" "1024 bytes" "4096 bytes" "16384 bytes"
 	liftIO $ printf "===================================================================================================\n"
 	mapM_ (liftIO . putStrLn) l
+-}
