@@ -1,4 +1,4 @@
-module KATECB (vectors_encrypt, vectors_decrypt) where
+module KATECB where
 
 import qualified Data.ByteString as B
 

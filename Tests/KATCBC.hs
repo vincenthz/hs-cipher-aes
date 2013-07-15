@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module KATCBC (vectors_encrypt, vectors_decrypt) where
+module KATCBC where
 
 import qualified Data.ByteString as B
 import Data.ByteString.Char8 ()

@@ -53,6 +53,7 @@ Test-Suite test-cipher-aes
   Build-depends:     base >= 4 && < 5
                    , cipher-aes
                    , crypto-cipher-types
+                   , crypto-cipher-tests
                    , bytestring
                    , byteable
                    , QuickCheck >= 2
