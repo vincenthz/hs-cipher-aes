@@ -9,7 +9,6 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 import Test.QuickCheck
 import Test.QuickCheck.Test
-import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 import Data.Byteable
 import qualified Data.ByteString as B
