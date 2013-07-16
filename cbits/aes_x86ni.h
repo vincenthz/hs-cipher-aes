@@ -40,6 +40,15 @@
 #include "aes.h"
 #include "block128.h"
 
+#ifdef IMPL_DEBUG
+static void block128_sse_print(__m128i m)
+{
+	block128 b;
+	_mm_storeu_si128((__m128i *) &b.b, m);
+	block128_print(&b);
+}
+#endif
+
 void aes_ni_init(aes_key *key, uint8_t *origkey, uint8_t size);
 void aes_ni_encrypt_block128(aes_block *out, aes_key *key, aes_block *in);
 void aes_ni_encrypt_block256(aes_block *out, aes_key *key, aes_block *in);

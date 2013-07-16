@@ -84,4 +84,16 @@ static inline void block128_inc_be(block128 *b)
 		b->q[1] = cpu_to_be64(v);
 }
 
+#ifdef IMPL_DEBUG
+#include <stdio.h>
+static inline void block128_print(block128 *b)
+{
+	int i;
+	for (i = 0; i < 16; i++) {
+		printf("%02x ", b->b[i]);
+	}
+	printf("\n");
+}
+#endif
+
 #endif
