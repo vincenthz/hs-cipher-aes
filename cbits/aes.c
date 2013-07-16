@@ -147,8 +147,10 @@ typedef void (*block_f)(aes_block *output, aes_key *key, aes_block *input);
 #define aes_decrypt_block(o,k,i) aes-generic_decrypt_block(o,k,i)
 #endif
 
-void initialize_table_ni(void)
+void initialize_table_ni(int aesni, int pclmul)
 {
+	if (!aesni)
+		return;
 	branch_table[INIT_128] = aes_ni_init;
 	branch_table[INIT_256] = aes_ni_init;
 
@@ -182,7 +184,7 @@ void aes_initkey(aes_key *key, uint8_t *origkey, uint8_t size)
 	case 32: key->nbr = 14; key->strength = 2; break;
 	}
 #if defined(ARCH_X86) && defined(WITH_AESNI)
-	have_aesni(initialize_table_ni);
+	initialize_hw(initialize_table_ni);
 #endif
 	init_f _init = GET_INIT(key->strength);
 	_init(key, origkey, size);

@@ -37,9 +37,9 @@
 #endif
 
 #ifdef USE_AESNI
-int have_aesni(void (*init_table)(void));
+void initialize_hw(void (*init_table)(int, int));
 #else
-#define have_aesni(init_table) 	(0)
+#define initialize_hw(init_table) 	(0)
 #endif
 
 #endif
