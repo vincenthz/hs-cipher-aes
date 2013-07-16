@@ -82,8 +82,8 @@ void SIZED(aes_ni_encrypt_cbc)(aes_block *out, aes_key *key, aes_block *_iv, aes
 		__m128i m = _mm_loadu_si128((__m128i *) in);
 		m = _mm_xor_si128(m, iv);
 		DO_ENC_BLOCK(m);
-		_mm_storeu_si128((__m128i *) out, m);
 		iv = m;
+		_mm_storeu_si128((__m128i *) out, m);
 	}
 }
 
@@ -125,12 +125,12 @@ void SIZED(aes_ni_encrypt_ctr)(uint8_t *output, aes_key *key, aes_block *_iv, ui
 		 * encrypt it and and xor it the input block
 		 */
 		__m128i tmp = _mm_shuffle_epi8(iv, bswap_mask);
-		__m128i m = _mm_loadu_si128((__m128i *) input);
-
 		DO_ENC_BLOCK(tmp);
+		__m128i m = _mm_loadu_si128((__m128i *) input);
 		m = _mm_xor_si128(m, tmp);
 
 		_mm_storeu_si128((__m128i *) output, m);
+		/* iv += 1 */
 		iv = _mm_add_epi64(iv, one);
 	}
 
