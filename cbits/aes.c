@@ -193,6 +193,9 @@ void initialize_table_ni(int aesni, int pclmul)
 	/* XTS */
 	branch_table[ENCRYPT_XTS_128] = aes_ni_encrypt_xts128;
 	branch_table[ENCRYPT_XTS_256] = aes_ni_encrypt_xts256;
+	/* GCM */
+	branch_table[ENCRYPT_GCM_128] = aes_ni_gcm_encrypt128;
+	branch_table[ENCRYPT_GCM_256] = aes_ni_gcm_encrypt256;
 }
 
 void aes_initkey(aes_key *key, uint8_t *origkey, uint8_t size)

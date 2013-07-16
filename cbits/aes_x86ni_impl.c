@@ -180,3 +180,84 @@ void SIZED(aes_ni_encrypt_xts)(aes_block *out, aes_key *key1, aes_key *key2,
 		}
 	} while (0);
 }
+
+void SIZED(aes_ni_gcm_encrypt)(uint8_t *output, aes_gcm *gcm, aes_key *key, uint8_t *input, uint32_t length)
+{
+	__m128i *k = (__m128i *) key->data;
+	__m128i bswap_mask = _mm_setr_epi8(7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8);
+	__m128i one        = _mm_set_epi32(0,1,0,0);
+	uint32_t nb_blocks = length / 16;
+	uint32_t part_block_len = length % 16;
+
+	gcm->length_input += length;
+
+	__m128i h  = _mm_loadu_si128((__m128i *) &gcm->h);
+	__m128i tag = _mm_loadu_si128((__m128i *) &gcm->tag);
+	__m128i iv = _mm_loadu_si128((__m128i *) &gcm->civ);
+	iv = _mm_shuffle_epi8(iv, bswap_mask);
+
+	PRELOAD_ENC(k);
+
+	for (; nb_blocks-- > 0; output += 16, input += 16) {
+		/* iv += 1 */
+		iv = _mm_add_epi64(iv, one);
+
+		/* put back iv in big endian, encrypt it,
+		 * and xor it to input */
+		__m128i tmp = _mm_shuffle_epi8(iv, bswap_mask);
+		DO_ENC_BLOCK(tmp);
+		__m128i m = _mm_loadu_si128((__m128i *) input);
+		m = _mm_xor_si128(m, tmp);
+
+		tag = ghash_add(tag, h, m);
+
+		/* store it out */
+		_mm_storeu_si128((__m128i *) output, m);
+	}
+	if (part_block_len > 0) {
+		__m128i mask;
+		aes_block block;
+		/* FIXME could do something a bit more clever (slli & sub & and maybe) ... */
+		switch (part_block_len) {
+		case 1: mask = _mm_setr_epi8(0,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 2: mask = _mm_setr_epi8(0,1,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 3: mask = _mm_setr_epi8(0,1,2,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 4: mask = _mm_setr_epi8(0,1,2,3,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 5: mask = _mm_setr_epi8(0,1,2,3,4,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 6: mask = _mm_setr_epi8(0,1,2,3,4,5,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 7: mask = _mm_setr_epi8(0,1,2,3,4,5,6,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 8: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 9: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,0x80,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 10: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,9,0x80,0x80,0x80,0x80,0x80,0x80); break;
+		case 11: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,9,10,0x80,0x80,0x80,0x80,0x80); break;
+		case 12: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,9,10,11,0x80,0x80,0x80,0x80); break;
+		case 13: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,9,10,11,12,0x80,0x80,0x80); break;
+		case 14: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,9,10,11,12,13,0x80,0x80); break;
+		case 15: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,0x80); break;
+		default: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15); break;
+		}
+		memset(&block.b, 0, 16);
+		memcpy(&block.b, input, part_block_len);
+
+		/* iv += 1 */
+		iv = _mm_add_epi64(iv, one);
+
+		/* put back iv in big endian mode, encrypt it and xor it with input */
+		__m128i tmp = _mm_shuffle_epi8(iv, bswap_mask);
+		DO_ENC_BLOCK(tmp);
+
+		__m128i m = _mm_loadu_si128((__m128i *) &block);
+		m = _mm_xor_si128(m, tmp);
+		m = _mm_shuffle_epi8(m, mask);
+
+		tag = ghash_add(tag, h, m);
+
+		/* make output */
+		_mm_storeu_si128((__m128i *) &block.b, m);
+		memcpy(output, &block.b, part_block_len);
+	}
+	/* store back IV & tag */
+	__m128i tmp = _mm_shuffle_epi8(iv, bswap_mask);
+	_mm_storeu_si128((__m128i *) &gcm->civ, tmp);
+	_mm_storeu_si128((__m128i *) &gcm->tag, tag);
+}
