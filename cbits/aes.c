@@ -163,7 +163,7 @@ typedef void (*block_f)(aes_block *output, aes_key *key, aes_block *input);
 #define GET_GCM_ENCRYPT(strength) aes_generic_gcm_encrypt
 #define GET_GCM_DECRYPT(strength) aes_generic_gcm_decrypt
 #define aes_encrypt_block(o,k,i) aes_generic_encrypt_block(o,k,i)
-#define aes_decrypt_block(o,k,i) aes-generic_decrypt_block(o,k,i)
+#define aes_decrypt_block(o,k,i) aes_generic_decrypt_block(o,k,i)
 #endif
 
 #if defined(ARCH_X86) && defined(WITH_AESNI)
