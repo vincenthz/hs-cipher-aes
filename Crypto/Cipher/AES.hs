@@ -55,8 +55,13 @@ import Data.SecureMem
 -- | AES Context (pre-processed key)
 newtype AES = AES SecureMem
 
+-- | AES with 128 bit key
 newtype AES128 = AES128 AES
+
+-- | AES with 192 bit key
 newtype AES192 = AES192 AES
+
+-- | AES with 256 bit key
 newtype AES256 = AES256 AES
 
 instance Cipher AES128 where
@@ -128,9 +133,9 @@ withGCMKeyAndCopySt aes (GCM gcmSt) f =
 withNewGCMSt :: GCM -> (Ptr GCM -> IO ()) -> IO GCM
 withNewGCMSt (GCM gcmSt) f = withSecureMemCopy gcmSt (f . castPtr) >>= \sm2 -> return (GCM sm2)
 
--- | initialize key
+-- | Initialize a new context with a key
 --
--- rounds need to be 10 / 12 / 14. any other values will cause undefined behavior
+-- Key need to be of length 16, 24 or 32 bytes. any other values will cause undefined behavior
 initAES :: Byteable b => b -> AES
 initAES k
     | len == 16 = initWithRounds 10
@@ -153,7 +158,11 @@ encryptECB = doECB c_aes_encrypt_ecb
 
 -- | encrypt using Cipher Block Chaining (CBC)
 {-# NOINLINE encryptCBC #-}
-encryptCBC :: Byteable iv => AES -> iv -> ByteString -> ByteString
+encryptCBC :: Byteable iv
+           => AES        -- ^ AES Context
+           -> iv         -- ^ Initial vector
+           -> ByteString -- ^ plaintext
+           -> ByteString -- ^ ciphertext
 encryptCBC = doCBC c_aes_encrypt_cbc
 
 -- | generate a counter mode pad. this is generally xor-ed to an input
@@ -180,10 +189,10 @@ genCTR ctx iv len
 -- in CTR mode encryption and decryption is the same operation.
 {-# NOINLINE encryptCTR #-}
 encryptCTR :: Byteable iv
-           => AES
-           -> iv
-           -> ByteString
-           -> ByteString
+           => AES        -- ^ AES Context
+           -> iv         -- ^ initial vector, usually representing a 128 bit integer
+           -> ByteString -- ^ plaintext input
+           -> ByteString -- ^ ciphertext output
 encryptCTR ctx iv input
     | len <= 0  = B.empty
     | otherwise = unsafeCreate len doEncrypt
@@ -198,8 +207,8 @@ encryptCTR ctx iv input
 -- a tag is also computed.
 {-# NOINLINE encryptGCM #-}
 encryptGCM :: Byteable iv
-           => AES        -- ^ Key
-           -> iv         -- ^ initial vector
+           => AES        -- ^ AES Context
+           -> iv         -- ^ IV initial vector of any size
            -> ByteString -- ^ data to authenticate (AAD)
            -> ByteString -- ^ data to encrypt
            -> (ByteString, AuthTag) -- ^ ciphertext and tag
@@ -210,7 +219,12 @@ encryptGCM = doGCM gcmAppendEncrypt
 -- the first key is the normal block encryption key
 -- the second key is used for the initial block tweak
 {-# NOINLINE encryptXTS #-}
-encryptXTS :: Byteable iv => (AES,AES) -> iv -> Word32 -> ByteString -> ByteString
+encryptXTS :: Byteable iv
+           => (AES,AES)  -- ^ AES cipher and tweak context
+           -> iv         -- ^ a 128 bits IV, typically a sector or a block offset in XTS
+           -> Word32     -- ^ number of rounds to skip, also seen a 16 byte offset in the sector or block.
+           -> ByteString -- ^ input to encrypt
+           -> ByteString -- ^ output encrypted
 encryptXTS = doXTS c_aes_encrypt_xts
 
 -- | decrypt using Electronic Code Book (ECB)
@@ -226,17 +240,31 @@ decryptCBC = doCBC c_aes_decrypt_cbc
 -- | decrypt using Counter mode (CTR).
 --
 -- in CTR mode encryption and decryption is the same operation.
-decryptCTR :: Byteable iv => AES -> iv -> ByteString -> ByteString
+decryptCTR :: Byteable iv
+           => AES        -- ^ AES Context
+           -> iv         -- ^ initial vector, usually representing a 128 bit integer
+           -> ByteString -- ^ ciphertext input
+           -> ByteString -- ^ plaintext output
 decryptCTR = encryptCTR
 
 -- | decrypt using XTS
 {-# NOINLINE decryptXTS #-}
-decryptXTS :: Byteable iv => (AES,AES) -> iv -> Word32 -> ByteString -> ByteString
+decryptXTS :: Byteable iv
+           => (AES,AES)  -- ^ AES cipher and tweak context
+           -> iv         -- ^ a 128 bits IV, typically a sector or a block offset in XTS
+           -> Word32     -- ^ number of rounds to skip, also seen a 16 byte offset in the sector or block.
+           -> ByteString -- ^ input to decrypt
+           -> ByteString -- ^ output decrypted
 decryptXTS = doXTS c_aes_decrypt_xts
 
 -- | decrypt using Galois Counter Mode (GCM)
 {-# NOINLINE decryptGCM #-}
-decryptGCM :: Byteable iv => AES -> iv -> ByteString -> ByteString -> (ByteString, AuthTag)
+decryptGCM :: Byteable iv
+           => AES        -- ^ Key
+           -> iv         -- ^ IV initial vector of any size
+           -> ByteString -- ^ data to authenticate (AAD)
+           -> ByteString -- ^ data to decrypt
+           -> (ByteString, AuthTag) -- ^ plaintext and tag
 decryptGCM = doGCM gcmAppendDecrypt
 
 {-# INLINE doECB #-}
@@ -269,7 +297,11 @@ doCBC f ctx iv input
 {-# INLINE doXTS #-}
 doXTS :: Byteable iv
       => (Ptr b -> Ptr AES -> Ptr AES -> Ptr Word8 -> CUInt -> CString -> CUInt -> IO ())
-      -> (AES, AES) -> iv -> Word32 -> ByteString -> ByteString
+      -> (AES, AES)
+      -> iv
+      -> Word32
+      -> ByteString
+      -> ByteString
 doXTS f (key1,key2) iv spoint input
     | len == 0  = B.empty
     | r /= 0    = error "cannot use with non multiple of block size (yet)"
@@ -279,7 +311,13 @@ doXTS f (key1,key2) iv spoint input
         len           = B.length input
 
 {-# INLINE doGCM #-}
-doGCM :: Byteable iv => (AES -> GCM -> ByteString -> (ByteString, GCM)) -> AES -> iv -> ByteString -> ByteString -> (ByteString, AuthTag)
+doGCM :: Byteable iv
+      => (AES -> GCM -> ByteString -> (ByteString, GCM))
+      -> AES
+      -> iv
+      -> ByteString
+      -> ByteString
+      -> (ByteString, AuthTag)
 doGCM f ctx iv aad input = (output, tag)
   where tag             = gcmFinish ctx after 16
         (output, after) = f ctx afterAAD input
