@@ -66,17 +66,17 @@ newtype AES256 = AES256 AES
 
 instance Cipher AES128 where
     cipherName    _ = "AES128"
-    cipherKeySize _ = Just 16
+    cipherKeySize _ = KeySizeFixed 16
     cipherInit k    = AES128 $ initAES k
 
 instance Cipher AES192 where
     cipherName    _ = "AES192"
-    cipherKeySize _ = Just 24
+    cipherKeySize _ = KeySizeFixed 24
     cipherInit k    = AES192 $ initAES k
 
 instance Cipher AES256 where
     cipherName    _ = "AES256"
-    cipherKeySize _ = Just 32
+    cipherKeySize _ = KeySizeFixed 32
     cipherInit k    = AES256 $ initAES k
 
 #define INSTANCE_BLOCKCIPHER(CSTR) \
@@ -141,7 +141,7 @@ initAES k
     | len == 16 = initWithRounds 10
     | len == 24 = initWithRounds 12
     | len == 32 = initWithRounds 14
-    | otherwise = error "not a valid key length"
+    | otherwise = error "AES: not a valid key length (valid=16,24,32)"
   where len = byteableLength k
         initWithRounds nbR = AES $ unsafeCreateSecureMem (16+2*2*16*nbR) aesInit
         aesInit ptr = withBytePtr k $ \ikey ->
