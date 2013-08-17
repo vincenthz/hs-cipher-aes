@@ -64,6 +64,11 @@ newtype AES192 = AES192 AES
 -- | AES with 256 bit key
 newtype AES256 = AES256 AES
 
+instance Cipher AES where
+    cipherName    _ = "AES"
+    cipherKeySize _ = KeySizeEnum [16,24,32]
+    cipherInit k    = initAES k
+
 instance Cipher AES128 where
     cipherName    _ = "AES128"
     cipherKeySize _ = KeySizeFixed 16
@@ -78,6 +83,24 @@ instance Cipher AES256 where
     cipherName    _ = "AES256"
     cipherKeySize _ = KeySizeFixed 32
     cipherInit k    = AES256 $ initAES k
+
+instance BlockCipher AES where
+    blockSize _ = 16
+    ecbEncrypt = encryptECB
+    ecbDecrypt = decryptECB
+    cbcEncrypt = encryptCBC
+    cbcDecrypt = decryptCBC
+    ctrCombine = encryptCTR
+    xtsEncrypt = encryptXTS
+    xtsDecrypt = decryptXTS
+    aeadInit AEAD_GCM aes iv = Just $ AEAD aes $ AEADState $ gcmInit aes iv
+    aeadInit _        _    _ = Nothing
+
+instance AEADModeImpl AES GCM where
+    aeadStateAppendHeader _ = gcmAppendAAD
+    aeadStateEncrypt = gcmAppendEncrypt
+    aeadStateDecrypt = gcmAppendDecrypt
+    aeadStateFinalize = gcmFinish
 
 #define INSTANCE_BLOCKCIPHER(CSTR) \
 instance BlockCipher CSTR where \
