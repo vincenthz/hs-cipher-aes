@@ -42,7 +42,7 @@
 #define ALIGN_UP(addr, size) (((addr) + ((size) - 1)) & (~((size) - 1)))
 #define ALIGNMENT(n) __attribute__((aligned(n)))
 
-static __m128i aes_128_key_expansion(__m128i key, __m128i keygened, int shuffle)
+static __m128i aes_128_key_expansion(__m128i key, __m128i keygened, const uint8_t shuffle)
 {
 	keygened = _mm_shuffle_epi32(keygened, shuffle);
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
