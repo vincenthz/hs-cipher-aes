@@ -35,7 +35,7 @@ Library
                    , bytestring
                    , byteable
                    , crypto-cipher-types >= 0.0.3
-                   , securemem >= 0.1.2
+                   , securemem >= 0.1.3
   Exposed-modules:   Crypto.Cipher.AES
   ghc-options:       -Wall -optc-O3 -fno-cse -fwarn-tabs
   C-sources:         cbits/aes_generic.c
