@@ -54,18 +54,22 @@ static void cpuid(uint32_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, ui
 }
 
 #ifdef USE_AESNI
-int have_aesni(void)
+void initialize_hw(void (*init_table)(int, int))
 {
-	static int v = -1;
-	if (v == -1) {
+	static int inited = 0;
+	if (inited == 0) {
 		uint32_t eax, ebx, ecx, edx;
+		int aesni, pclmul;
+
+		inited = 1;
 		cpuid(1, &eax, &ebx, &ecx, &edx);
-		v = (ecx & 0x02000000);
+		aesni = (ecx & 0x02000000);
+		pclmul = (ecx & 0x00000001);
+		init_table(aesni, pclmul);
 	}
-	return v;
 }
 #else
-#define have_aesni() 	(0)
+#define initialize_hw(init_table) 	(0)
 #endif
 
 #endif

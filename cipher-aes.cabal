@@ -1,5 +1,5 @@
 Name:                cipher-aes
-Version:             0.1.8
+Version:             0.2.3
 Description:
     Fast AES cipher implementation with advanced mode of operations.
     .
@@ -12,7 +12,7 @@ Description:
     .
     The software implementation uses S-Boxes, which might suffer for cache timing issues.
     However do notes that most other known software implementations, including very popular
-    one (openssl, gnutls) also uses same implementation. If it matters for your
+    one (openssl, gnutls) also uses similar implementation. If it matters for your
     case, you should make sure you have AES-NI available, or you'll need to use a different
     implementation.
     .
@@ -28,12 +28,16 @@ Homepage:            http://github.com/vincenthz/hs-cipher-aes
 Cabal-Version:       >=1.8
 Extra-Source-Files:  Tests/*.hs
                      cbits/*.h
+                     cbits/aes_x86ni_impl.c
 
 Library
   Build-Depends:     base >= 4 && < 5
                    , bytestring
+                   , byteable
+                   , crypto-cipher-types >= 0.0.3
+                   , securemem >= 0.1.2
   Exposed-modules:   Crypto.Cipher.AES
-  ghc-options:       -Wall
+  ghc-options:       -Wall -optc-O3 -fno-cse -fwarn-tabs
   C-sources:         cbits/aes_generic.c
                      cbits/aes.c
                      cbits/gf.c
@@ -48,7 +52,10 @@ Test-Suite test-cipher-aes
   Main-Is:           Tests.hs
   Build-depends:     base >= 4 && < 5
                    , cipher-aes
+                   , crypto-cipher-types >= 0.0.3
+                   , crypto-cipher-tests
                    , bytestring
+                   , byteable
                    , QuickCheck >= 2
                    , test-framework >= 0.3.3
                    , test-framework-quickcheck2 >= 0.2.9
@@ -60,6 +67,8 @@ Benchmark bench-cipher-aes
   Build-depends:     base >= 4 && < 5
                    , bytestring
                    , cipher-aes
+                   , crypto-cipher-types >= 0.0.3
+                   , crypto-cipher-benchmarks
                    , criterion
                    , mtl
 

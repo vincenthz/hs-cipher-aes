@@ -22,7 +22,10 @@ Implementation details:
 TODO:
 
 * remove create\_round\_key from sw implementation.
-* add aesni acceleration for aes192 and aes256.
+* add aesni acceleration for aes192.
 * add pclmulqdq acceleration for GF.
 * make galois multiplication endian safe.
 * optimise further (lots of low hanging fruits).
+* add a streaming GCM API
+* GCM's GMAC support
+* add OCB mode

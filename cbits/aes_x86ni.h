@@ -38,14 +38,39 @@
 #include <wmmintrin.h>
 #include <tmmintrin.h>
 #include "aes.h"
+#include "block128.h"
+
+#ifdef IMPL_DEBUG
+static void block128_sse_print(__m128i m)
+{
+	block128 b;
+	_mm_storeu_si128((__m128i *) &b.b, m);
+	block128_print(&b);
+}
+#endif
 
 void aes_ni_init(aes_key *key, uint8_t *origkey, uint8_t size);
-void aes_ni_encrypt_ecb(uint8_t *out, aes_key *key, uint8_t *in, uint32_t blocks);
-void aes_ni_decrypt_ecb(uint8_t *out, aes_key *key, uint8_t *in, uint32_t blocks);
-void aes_ni_encrypt_cbc(uint8_t *out, aes_key *key, uint8_t *_iv, uint8_t *in, uint32_t blocks);
-void aes_ni_decrypt_cbc(uint8_t *out, aes_key *key, uint8_t *_iv, uint8_t *in, uint32_t blocks);
-void aes_ni_encrypt_xts(uint8_t *out, aes_key *key1, aes_key *key2,
-                        uint8_t *_tweak, uint32_t spoint, uint8_t *in, uint32_t blocks);
+void aes_ni_encrypt_block128(aes_block *out, aes_key *key, aes_block *in);
+void aes_ni_encrypt_block256(aes_block *out, aes_key *key, aes_block *in);
+void aes_ni_decrypt_block128(aes_block *out, aes_key *key, aes_block *in);
+void aes_ni_decrypt_block256(aes_block *out, aes_key *key, aes_block *in);
+void aes_ni_encrypt_ecb128(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_ecb256(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
+void aes_ni_decrypt_ecb128(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
+void aes_ni_decrypt_ecb256(aes_block *out, aes_key *key, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_cbc128(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_cbc256(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
+void aes_ni_decrypt_cbc128(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
+void aes_ni_decrypt_cbc256(aes_block *out, aes_key *key, aes_block *_iv, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_ctr128(uint8_t *out, aes_key *key, aes_block *_iv, uint8_t *in, uint32_t length);
+void aes_ni_encrypt_ctr256(uint8_t *out, aes_key *key, aes_block *_iv, uint8_t *in, uint32_t length);
+void aes_ni_encrypt_xts128(aes_block *out, aes_key *key1, aes_key *key2,
+                           aes_block *_tweak, uint32_t spoint, aes_block *in, uint32_t blocks);
+void aes_ni_encrypt_xts256(aes_block *out, aes_key *key1, aes_key *key2,
+                           aes_block *_tweak, uint32_t spoint, aes_block *in, uint32_t blocks);
+
+void aes_ni_gcm_encrypt128(uint8_t *out, aes_gcm *gcm, aes_key *key, uint8_t *in, uint32_t length);
+void aes_ni_gcm_encrypt256(uint8_t *out, aes_gcm *gcm, aes_key *key, uint8_t *in, uint32_t length);
 
 void gf_mul_x86ni(block128 *res, block128 *a_, block128 *b_);
 
