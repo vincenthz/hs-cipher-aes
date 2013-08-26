@@ -42,9 +42,21 @@
 #define ALIGN_UP(addr, size) (((addr) + ((size) - 1)) & (~((size) - 1)))
 #define ALIGNMENT(n) __attribute__((aligned(n)))
 
-static __m128i aes_128_key_expansion(__m128i key, __m128i keygened, const uint8_t shuffle)
+/* old GCC version doesn't cope with the shuffle parameters, that can take 2 values (0xff and 0xaa)
+ * in our case, passed as argument despite being a immediate 8 bits constant anyway.
+ * un-factorise aes_128_key_expansion into 2 version that have the shuffle parameter explicitly set */
+static __m128i aes_128_key_expansion_ff(__m128i key, __m128i keygened)
 {
-	keygened = _mm_shuffle_epi32(keygened, shuffle);
+	keygened = _mm_shuffle_epi32(keygened, 0xff);
+	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
+	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
+	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
+	return _mm_xor_si128(key, keygened);
+}
+
+static __m128i aes_128_key_expansion_aa(__m128i key, __m128i keygened)
+{
+	keygened = _mm_shuffle_epi32(keygened, 0xaa);
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
@@ -61,7 +73,7 @@ void aes_ni_init(aes_key *key, uint8_t *ikey, uint8_t size)
 	case 16:
 		k[0] = _mm_loadu_si128((const __m128i*) ikey);
 
-		#define AES_128_key_exp(K, RCON) aes_128_key_expansion(K, _mm_aeskeygenassist_si128(K, RCON), 0xff)
+		#define AES_128_key_exp(K, RCON) aes_128_key_expansion_ff(K, _mm_aeskeygenassist_si128(K, RCON))
 		k[1]  = AES_128_key_exp(k[0], 0x01);
 		k[2]  = AES_128_key_exp(k[1], 0x02);
 		k[3]  = AES_128_key_exp(k[2], 0x04);
@@ -90,8 +102,8 @@ void aes_ni_init(aes_key *key, uint8_t *ikey, uint8_t size)
 			_mm_storeu_si128(((__m128i *) out) + i, k[i]);
 		break;
 	case 32:
-#define AES_256_key_exp_1(K1, K2, RCON) aes_128_key_expansion(K1, _mm_aeskeygenassist_si128(K2, RCON), 0xff)
-#define AES_256_key_exp_2(K1, K2)       aes_128_key_expansion(K1, _mm_aeskeygenassist_si128(K2, 0x00), 0xaa)
+#define AES_256_key_exp_1(K1, K2, RCON) aes_128_key_expansion_ff(K1, _mm_aeskeygenassist_si128(K2, RCON))
+#define AES_256_key_exp_2(K1, K2)       aes_128_key_expansion_aa(K1, _mm_aeskeygenassist_si128(K2, 0x00))
 		k[0]  = _mm_loadu_si128((const __m128i*) ikey);
 		k[1]  = _mm_loadu_si128((const __m128i*) (ikey+16));
 		k[2]  = AES_256_key_exp_1(k[0], k[1], 0x01);
