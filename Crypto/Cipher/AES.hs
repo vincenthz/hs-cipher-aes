@@ -11,11 +11,14 @@
 --
 module Crypto.Cipher.AES
     (
-    -- * data types
+    -- * block cipher data types
       AES
     , AES128
     , AES192
     , AES256
+
+    -- * Authenticated encryption block cipher types
+    , AESGCM
 
     -- * creation
     , initAES
@@ -96,7 +99,7 @@ instance BlockCipher AES where
     aeadInit AEAD_GCM aes iv = Just $ AEAD aes $ AEADState $ gcmInit aes iv
     aeadInit _        _    _ = Nothing
 
-instance AEADModeImpl AES GCM where
+instance AEADModeImpl AES AESGCM where
     aeadStateAppendHeader _ = gcmAppendAAD
     aeadStateEncrypt = gcmAppendEncrypt
     aeadStateDecrypt = gcmAppendDecrypt
@@ -116,7 +119,7 @@ instance BlockCipher CSTR where \
     ; aeadInit _        _                  _ = Nothing \
     }; \
 \
-instance AEADModeImpl CSTR GCM where \
+instance AEADModeImpl CSTR AESGCM where \
     { aeadStateAppendHeader (CSTR _) gcmState bs = gcmAppendAAD gcmState bs \
     ; aeadStateEncrypt (CSTR aes) gcmState input = gcmAppendEncrypt aes gcmState input \
     ; aeadStateDecrypt (CSTR aes) gcmState input = gcmAppendDecrypt aes gcmState input \
@@ -127,8 +130,8 @@ INSTANCE_BLOCKCIPHER(AES128)
 INSTANCE_BLOCKCIPHER(AES192)
 INSTANCE_BLOCKCIPHER(AES256)
 
--- | GCM State
-newtype GCM = GCM SecureMem
+-- | AESGCM State
+newtype AESGCM = AESGCM SecureMem
 
 sizeGCM :: Int
 sizeGCM = 80
@@ -146,15 +149,15 @@ withKey2AndIV :: Byteable iv => AES -> AES -> iv -> (Ptr AES -> Ptr AES -> Ptr W
 withKey2AndIV key1 key2 iv f =
     keyToPtr key1 $ \kptr1 -> keyToPtr key2 $ \kptr2 -> ivToPtr iv $ \ivp -> f kptr1 kptr2 ivp
 
-withGCMKeyAndCopySt :: AES -> GCM -> (Ptr GCM -> Ptr AES -> IO a) -> IO (a, GCM)
-withGCMKeyAndCopySt aes (GCM gcmSt) f =
+withGCMKeyAndCopySt :: AES -> AESGCM -> (Ptr AESGCM -> Ptr AES -> IO a) -> IO (a, AESGCM)
+withGCMKeyAndCopySt aes (AESGCM gcmSt) f =
     keyToPtr aes $ \aesPtr -> do
         newSt <- secureMemCopy gcmSt
         a     <- withSecureMemPtr newSt $ \gcmStPtr -> f (castPtr gcmStPtr) aesPtr
-        return (a, GCM newSt)
+        return (a, AESGCM newSt)
 
-withNewGCMSt :: GCM -> (Ptr GCM -> IO ()) -> IO GCM
-withNewGCMSt (GCM gcmSt) f = withSecureMemCopy gcmSt (f . castPtr) >>= \sm2 -> return (GCM sm2)
+withNewGCMSt :: AESGCM -> (Ptr AESGCM -> IO ()) -> IO AESGCM
+withNewGCMSt (AESGCM gcmSt) f = withSecureMemCopy gcmSt (f . castPtr) >>= \sm2 -> return (AESGCM sm2)
 
 -- | Initialize a new context with a key
 --
@@ -334,7 +337,7 @@ doXTS f (key1,key2) iv spoint input
 
 {-# INLINE doGCM #-}
 doGCM :: Byteable iv
-      => (AES -> GCM -> ByteString -> (ByteString, GCM))
+      => (AES -> AESGCM -> ByteString -> (ByteString, AESGCM))
       -> AES
       -> iv
       -> ByteString
@@ -348,18 +351,18 @@ doGCM f ctx iv aad input = (output, tag)
 
 -- | initialize a gcm context
 {-# NOINLINE gcmInit #-}
-gcmInit :: Byteable iv => AES -> iv -> GCM
+gcmInit :: Byteable iv => AES -> iv -> AESGCM
 gcmInit ctx iv = unsafePerformIO $ do
     sm <- createSecureMem sizeGCM $ \gcmStPtr ->
             withKeyAndIV ctx iv $ \k v ->
             c_aes_gcm_init (castPtr gcmStPtr) k v (fromIntegral $ byteableLength iv)
-    return $ GCM sm
+    return $ AESGCM sm
 
 -- | append data which is going to just be authentified to the GCM context.
 --
 -- need to happen after initialization and before appending encryption/decryption data.
 {-# NOINLINE gcmAppendAAD #-}
-gcmAppendAAD :: GCM -> ByteString -> GCM
+gcmAppendAAD :: AESGCM -> ByteString -> AESGCM
 gcmAppendAAD gcmSt input = unsafePerformIO doAppend
   where doAppend =
             withNewGCMSt gcmSt $ \gcmStPtr ->
@@ -371,7 +374,7 @@ gcmAppendAAD gcmSt input = unsafePerformIO doAppend
 -- bytestring need to be multiple of AES block size, unless it's the last call to this function.
 -- need to happen after AAD appending, or after initialization if no AAD data.
 {-# NOINLINE gcmAppendEncrypt #-}
-gcmAppendEncrypt :: AES -> GCM -> ByteString -> (ByteString, GCM)
+gcmAppendEncrypt :: AES -> AESGCM -> ByteString -> (ByteString, AESGCM)
 gcmAppendEncrypt ctx gcm input = unsafePerformIO $ withGCMKeyAndCopySt ctx gcm doEnc
   where len = B.length input
         doEnc gcmStPtr aesPtr =
@@ -384,7 +387,7 @@ gcmAppendEncrypt ctx gcm input = unsafePerformIO $ withGCMKeyAndCopySt ctx gcm d
 -- bytestring need to be multiple of AES block size, unless it's the last call to this function.
 -- need to happen after AAD appending, or after initialization if no AAD data.
 {-# NOINLINE gcmAppendDecrypt #-}
-gcmAppendDecrypt :: AES -> GCM -> ByteString -> (ByteString, GCM)
+gcmAppendDecrypt :: AES -> AESGCM -> ByteString -> (ByteString, AESGCM)
 gcmAppendDecrypt ctx gcm input = unsafePerformIO $ withGCMKeyAndCopySt ctx gcm doDec
   where len = B.length input
         doDec gcmStPtr aesPtr =
@@ -394,7 +397,7 @@ gcmAppendDecrypt ctx gcm input = unsafePerformIO $ withGCMKeyAndCopySt ctx gcm d
 
 -- | Generate the Tag from GCM context
 {-# NOINLINE gcmFinish #-}
-gcmFinish :: AES -> GCM -> Int -> AuthTag
+gcmFinish :: AES -> AESGCM -> Int -> AuthTag
 gcmFinish ctx gcm taglen = AuthTag $ B.take taglen computeTag
   where computeTag = unsafeCreate 16 $ \t ->
                         withGCMKeyAndCopySt ctx gcm (c_aes_gcm_finish (castPtr t)) >> return ()
@@ -427,16 +430,16 @@ foreign import ccall "aes.h aes_encrypt_ctr"
     c_aes_encrypt_ctr :: CString -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_gcm_init"
-    c_aes_gcm_init :: Ptr GCM -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
+    c_aes_gcm_init :: Ptr AESGCM -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_gcm_aad"
-    c_aes_gcm_aad :: Ptr GCM -> CString -> CUInt -> IO ()
+    c_aes_gcm_aad :: Ptr AESGCM -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_gcm_encrypt"
-    c_aes_gcm_encrypt :: CString -> Ptr GCM -> Ptr AES -> CString -> CUInt -> IO ()
+    c_aes_gcm_encrypt :: CString -> Ptr AESGCM -> Ptr AES -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_gcm_decrypt"
-    c_aes_gcm_decrypt :: CString -> Ptr GCM -> Ptr AES -> CString -> CUInt -> IO ()
+    c_aes_gcm_decrypt :: CString -> Ptr AESGCM -> Ptr AES -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_gcm_finish"
-    c_aes_gcm_finish :: CString -> Ptr GCM -> Ptr AES -> IO ()
+    c_aes_gcm_finish :: CString -> Ptr AESGCM -> Ptr AES -> IO ()
