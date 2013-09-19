@@ -13,7 +13,7 @@ import Test.QuickCheck.Test
 import Data.Byteable
 import qualified Data.ByteString as B
 import qualified Crypto.Cipher.AES as AES
-import Crypto.Cipher.Types -- (iv128, IV(..), AuthTag(..), key128, key192, key256)
+import Crypto.Cipher.Types
 import Crypto.Cipher.Tests
 
 import qualified KATECB
