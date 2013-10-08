@@ -34,8 +34,8 @@ Library
   Build-Depends:     base >= 4 && < 5
                    , bytestring
                    , byteable
-                   , crypto-cipher-types >= 0.0.6
                    , securemem >= 0.1.2
+                   , crypto-cipher-types >= 0.0.6 && < 0.1
   Exposed-modules:   Crypto.Cipher.AES
   ghc-options:       -Wall -optc-O3 -fno-cse -fwarn-tabs
   C-sources:         cbits/aes_generic.c
