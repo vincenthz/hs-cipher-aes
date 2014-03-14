@@ -335,6 +335,10 @@ doXTS f (key1,key2) iv spoint input
   where (nbBlocks, r) = len `quotRem` 16
         len           = B.length input
 
+------------------------------------------------------------------------
+-- GCM
+------------------------------------------------------------------------
+
 {-# INLINE doGCM #-}
 doGCM :: Byteable iv
       => (AES -> AESGCM -> ByteString -> (ByteString, AESGCM))
@@ -402,33 +406,39 @@ gcmFinish ctx gcm taglen = AuthTag $ B.take taglen computeTag
   where computeTag = unsafeCreate 16 $ \t ->
                         withGCMKeyAndCopySt ctx gcm (c_aes_gcm_finish (castPtr t)) >> return ()
 
+------------------------------------------------------------------------
 foreign import ccall "aes.h aes_initkey"
     c_aes_init :: Ptr AES -> CString -> CUInt -> IO ()
 
+------------------------------------------------------------------------
 foreign import ccall "aes.h aes_encrypt_ecb"
     c_aes_encrypt_ecb :: CString -> Ptr AES -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_decrypt_ecb"
     c_aes_decrypt_ecb :: CString -> Ptr AES -> CString -> CUInt -> IO ()
 
+------------------------------------------------------------------------
 foreign import ccall "aes.h aes_encrypt_cbc"
     c_aes_encrypt_cbc :: CString -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_decrypt_cbc"
     c_aes_decrypt_cbc :: CString -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ()
 
+------------------------------------------------------------------------
 foreign import ccall "aes.h aes_encrypt_xts"
     c_aes_encrypt_xts :: CString -> Ptr AES -> Ptr AES -> Ptr Word8 -> CUInt -> CString -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_decrypt_xts"
     c_aes_decrypt_xts :: CString -> Ptr AES -> Ptr AES -> Ptr Word8 -> CUInt -> CString -> CUInt -> IO ()
 
+------------------------------------------------------------------------
 foreign import ccall "aes.h aes_gen_ctr"
     c_aes_gen_ctr :: CString -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_encrypt_ctr"
     c_aes_encrypt_ctr :: CString -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ()
 
+------------------------------------------------------------------------
 foreign import ccall "aes.h aes_gcm_init"
     c_aes_gcm_init :: Ptr AESGCM -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
 
