@@ -55,6 +55,15 @@ typedef struct {
 	uint64_t length_input;
 } aes_gcm;
 
+typedef struct {
+	block128 lstar;
+	block128 ldollar;
+	block128 offset_aad;
+	block128 offset_enc;
+	block128 sum_aad;
+	block128 sum_enc;
+} aes_ocb;
+
 /* in bytes: either 16,24,32 */
 void aes_initkey(aes_key *ctx, uint8_t *key, uint8_t size);
 
@@ -79,5 +88,11 @@ void aes_gcm_aad(aes_gcm *gcm, uint8_t *input, uint32_t length);
 void aes_gcm_encrypt(uint8_t *output, aes_gcm *gcm, aes_key *key, uint8_t *input, uint32_t length);
 void aes_gcm_decrypt(uint8_t *output, aes_gcm *gcm, aes_key *key, uint8_t *input, uint32_t length);
 void aes_gcm_finish(uint8_t *tag, aes_gcm *gcm, aes_key *key);
+
+void aes_ocb_init(aes_ocb *ocb, aes_key *key, uint8_t *iv, uint32_t len);
+void aes_ocb_aad(aes_ocb *ocb, aes_key *key, uint8_t *input, uint32_t length);
+void aes_ocb_encrypt(uint8_t *output, aes_ocb *ocb, aes_key *key, uint8_t *input, uint32_t length);
+void aes_ocb_decrypt(uint8_t *output, aes_ocb *ocb, aes_key *key, uint8_t *input, uint32_t length);
+void aes_ocb_finish(uint8_t *tag, aes_ocb *ocb, aes_key *key);
 
 #endif

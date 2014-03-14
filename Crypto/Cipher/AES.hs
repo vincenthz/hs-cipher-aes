@@ -33,6 +33,7 @@ module Crypto.Cipher.AES
     , encryptCTR
     , encryptXTS
     , encryptGCM
+    , encryptOCB
 
     -- * decryption
     , decryptECB
@@ -40,6 +41,7 @@ module Crypto.Cipher.AES
     , decryptCTR
     , decryptXTS
     , decryptGCM
+    , decryptOCB
     ) where
 
 import Data.Word
@@ -97,6 +99,7 @@ instance BlockCipher AES where
     xtsEncrypt = encryptXTS
     xtsDecrypt = decryptXTS
     aeadInit AEAD_GCM aes iv = Just $ AEAD aes $ AEADState $ gcmInit aes iv
+    aeadInit AEAD_OCB aes iv = Just $ AEAD aes $ AEADState $ ocbInit aes iv
     aeadInit _        _    _ = Nothing
 
 instance AEADModeImpl AES AESGCM where
@@ -104,6 +107,12 @@ instance AEADModeImpl AES AESGCM where
     aeadStateEncrypt = gcmAppendEncrypt
     aeadStateDecrypt = gcmAppendDecrypt
     aeadStateFinalize = gcmFinish
+
+instance AEADModeImpl AES AESOCB where
+    aeadStateAppendHeader = ocbAppendAAD
+    aeadStateEncrypt = ocbAppendEncrypt
+    aeadStateDecrypt = ocbAppendDecrypt
+    aeadStateFinalize = ocbFinish
 
 #define INSTANCE_BLOCKCIPHER(CSTR) \
 instance BlockCipher CSTR where \
@@ -116,6 +125,7 @@ instance BlockCipher CSTR where \
     ; xtsEncrypt (CSTR aes1, CSTR aes2) = encryptXTS (aes1,aes2) \
     ; xtsDecrypt (CSTR aes1, CSTR aes2) = decryptXTS (aes1,aes2) \
     ; aeadInit AEAD_GCM cipher@(CSTR aes) iv = Just $ AEAD cipher $ AEADState $ gcmInit aes iv \
+    ; aeadInit AEAD_OCB cipher@(CSTR aes) iv = Just $ AEAD cipher $ AEADState $ ocbInit aes iv \
     ; aeadInit _        _                  _ = Nothing \
     }; \
 \
@@ -124,6 +134,13 @@ instance AEADModeImpl CSTR AESGCM where \
     ; aeadStateEncrypt (CSTR aes) gcmState input = gcmAppendEncrypt aes gcmState input \
     ; aeadStateDecrypt (CSTR aes) gcmState input = gcmAppendDecrypt aes gcmState input \
     ; aeadStateFinalize (CSTR aes) gcmState len  = gcmFinish aes gcmState len \
+    }; \
+\
+instance AEADModeImpl CSTR AESOCB where \
+    { aeadStateAppendHeader (CSTR aes) ocbState bs = ocbAppendAAD aes ocbState bs \
+    ; aeadStateEncrypt (CSTR aes) ocbState input = ocbAppendEncrypt aes ocbState input \
+    ; aeadStateDecrypt (CSTR aes) ocbState input = ocbAppendDecrypt aes ocbState input \
+    ; aeadStateFinalize (CSTR aes) ocbState len  = ocbFinish aes ocbState len \
     }
 
 INSTANCE_BLOCKCIPHER(AES128)
@@ -133,8 +150,14 @@ INSTANCE_BLOCKCIPHER(AES256)
 -- | AESGCM State
 newtype AESGCM = AESGCM SecureMem
 
+-- | AESOCB State
+newtype AESOCB = AESOCB SecureMem
+
 sizeGCM :: Int
 sizeGCM = 80
+
+sizeOCB :: Int
+sizeOCB = 96
 
 keyToPtr :: AES -> (Ptr AES -> IO a) -> IO a
 keyToPtr (AES b) f = withSecureMemPtr b (f . castPtr)
@@ -158,6 +181,13 @@ withGCMKeyAndCopySt aes (AESGCM gcmSt) f =
 
 withNewGCMSt :: AESGCM -> (Ptr AESGCM -> IO ()) -> IO AESGCM
 withNewGCMSt (AESGCM gcmSt) f = withSecureMemCopy gcmSt (f . castPtr) >>= \sm2 -> return (AESGCM sm2)
+
+withOCBKeyAndCopySt :: AES -> AESOCB -> (Ptr AESOCB -> Ptr AES -> IO a) -> IO (a, AESOCB)
+withOCBKeyAndCopySt aes (AESOCB gcmSt) f =
+    keyToPtr aes $ \aesPtr -> do
+        newSt <- secureMemCopy gcmSt
+        a     <- withSecureMemPtr newSt $ \gcmStPtr -> f (castPtr gcmStPtr) aesPtr
+        return (a, AESOCB newSt)
 
 -- | Initialize a new context with a key
 --
@@ -240,6 +270,17 @@ encryptGCM :: Byteable iv
            -> (ByteString, AuthTag) -- ^ ciphertext and tag
 encryptGCM = doGCM gcmAppendEncrypt
 
+-- | encrypt using OCB v3
+-- return the encrypted bytestring and the tag associated
+{-# NOINLINE encryptOCB #-}
+encryptOCB :: Byteable iv
+           => AES        -- ^ AES Context
+           -> iv         -- ^ IV initial vector of any size
+           -> ByteString -- ^ data to authenticate (AAD)
+           -> ByteString -- ^ data to encrypt
+           -> (ByteString, AuthTag) -- ^ ciphertext and tag
+encryptOCB = doOCB ocbAppendEncrypt
+
 -- | encrypt using XTS
 --
 -- the first key is the normal block encryption key
@@ -292,6 +333,16 @@ decryptGCM :: Byteable iv
            -> ByteString -- ^ data to decrypt
            -> (ByteString, AuthTag) -- ^ plaintext and tag
 decryptGCM = doGCM gcmAppendDecrypt
+
+-- | decrypt using Offset Codebook Mode (OCB)
+{-# NOINLINE decryptOCB #-}
+decryptOCB :: Byteable iv
+           => AES        -- ^ Key
+           -> iv         -- ^ IV initial vector of any size
+           -> ByteString -- ^ data to authenticate (AAD)
+           -> ByteString -- ^ data to decrypt
+           -> (ByteString, AuthTag) -- ^ plaintext and tag
+decryptOCB = doOCB ocbAppendDecrypt
 
 {-# INLINE doECB #-}
 doECB :: (Ptr b -> Ptr AES -> CString -> CUInt -> IO ())
@@ -407,6 +458,76 @@ gcmFinish ctx gcm taglen = AuthTag $ B.take taglen computeTag
                         withGCMKeyAndCopySt ctx gcm (c_aes_gcm_finish (castPtr t)) >> return ()
 
 ------------------------------------------------------------------------
+-- OCB v3
+------------------------------------------------------------------------
+
+{-# INLINE doOCB #-}
+doOCB :: Byteable iv
+      => (AES -> AESOCB -> ByteString -> (ByteString, AESOCB))
+      -> AES
+      -> iv
+      -> ByteString
+      -> ByteString
+      -> (ByteString, AuthTag)
+doOCB f ctx iv aad input = (output, tag)
+  where tag             = ocbFinish ctx after 16
+        (output, after) = f ctx afterAAD input
+        afterAAD        = ocbAppendAAD ctx ini aad
+        ini             = ocbInit ctx iv
+
+-- | initialize an ocb context
+{-# NOINLINE ocbInit #-}
+ocbInit :: Byteable iv => AES -> iv -> AESOCB
+ocbInit ctx iv = unsafePerformIO $ do
+    sm <- createSecureMem sizeOCB $ \ocbStPtr ->
+            withKeyAndIV ctx iv $ \k v ->
+            c_aes_ocb_init (castPtr ocbStPtr) k v (fromIntegral $ byteableLength iv)
+    return $ AESOCB sm
+
+-- | append data which is going to just be authentified to the OCB context.
+--
+-- need to happen after initialization and before appending encryption/decryption data.
+{-# NOINLINE ocbAppendAAD #-}
+ocbAppendAAD :: AES -> AESOCB -> ByteString -> AESOCB
+ocbAppendAAD ctx ocb input = unsafePerformIO (snd `fmap` withOCBKeyAndCopySt ctx ocb doAppend)
+  where doAppend ocbStPtr aesPtr =
+            unsafeUseAsCString input $ \i ->
+            c_aes_ocb_aad ocbStPtr aesPtr i (fromIntegral $ B.length input)
+
+-- | append data to encrypt and append to the OCB context
+--
+-- bytestring need to be multiple of AES block size, unless it's the last call to this function.
+-- need to happen after AAD appending, or after initialization if no AAD data.
+{-# NOINLINE ocbAppendEncrypt #-}
+ocbAppendEncrypt :: AES -> AESOCB -> ByteString -> (ByteString, AESOCB)
+ocbAppendEncrypt ctx ocb input = unsafePerformIO $ withOCBKeyAndCopySt ctx ocb doEnc
+  where len = B.length input
+        doEnc ocbStPtr aesPtr =
+            create len $ \o ->
+            unsafeUseAsCString input $ \i ->
+            c_aes_ocb_encrypt (castPtr o) ocbStPtr aesPtr i (fromIntegral len)
+
+-- | append data to decrypt and append to the OCB context
+--
+-- bytestring need to be multiple of AES block size, unless it's the last call to this function.
+-- need to happen after AAD appending, or after initialization if no AAD data.
+{-# NOINLINE ocbAppendDecrypt #-}
+ocbAppendDecrypt :: AES -> AESOCB -> ByteString -> (ByteString, AESOCB)
+ocbAppendDecrypt ctx ocb input = unsafePerformIO $ withOCBKeyAndCopySt ctx ocb doDec
+  where len = B.length input
+        doDec ocbStPtr aesPtr =
+            create len $ \o ->
+            unsafeUseAsCString input $ \i ->
+            c_aes_ocb_decrypt (castPtr o) ocbStPtr aesPtr i (fromIntegral len)
+
+-- | Generate the Tag from OCB context
+{-# NOINLINE ocbFinish #-}
+ocbFinish :: AES -> AESOCB -> Int -> AuthTag
+ocbFinish ctx ocb taglen = AuthTag $ B.take taglen computeTag
+  where computeTag = unsafeCreate 16 $ \t ->
+                        withOCBKeyAndCopySt ctx ocb (c_aes_ocb_finish (castPtr t)) >> return ()
+
+------------------------------------------------------------------------
 foreign import ccall "aes.h aes_initkey"
     c_aes_init :: Ptr AES -> CString -> CUInt -> IO ()
 
@@ -453,3 +574,19 @@ foreign import ccall "aes.h aes_gcm_decrypt"
 
 foreign import ccall "aes.h aes_gcm_finish"
     c_aes_gcm_finish :: CString -> Ptr AESGCM -> Ptr AES -> IO ()
+
+------------------------------------------------------------------------
+foreign import ccall "aes.h aes_ocb_init"
+    c_aes_ocb_init :: Ptr AESOCB -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
+
+foreign import ccall "aes.h aes_ocb_aad"
+    c_aes_ocb_aad :: Ptr AESOCB -> Ptr AES -> CString -> CUInt -> IO ()
+
+foreign import ccall "aes.h aes_ocb_encrypt"
+    c_aes_ocb_encrypt :: CString -> Ptr AESOCB -> Ptr AES -> CString -> CUInt -> IO ()
+
+foreign import ccall "aes.h aes_ocb_decrypt"
+    c_aes_ocb_decrypt :: CString -> Ptr AESOCB -> Ptr AES -> CString -> CUInt -> IO ()
+
+foreign import ccall "aes.h aes_ocb_finish"
+    c_aes_ocb_finish :: CString -> Ptr AESOCB -> Ptr AES -> IO ()

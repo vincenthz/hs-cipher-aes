@@ -11,6 +11,7 @@ Modes supported:
 * CTR
 * XTS
 * GCM
+* OCB
 
 Implementation details:
 
@@ -28,4 +29,3 @@ TODO:
 * optimise further (lots of low hanging fruits).
 * add a streaming GCM API
 * GCM's GMAC support
-* add OCB mode

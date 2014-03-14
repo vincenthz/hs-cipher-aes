@@ -21,12 +21,13 @@ import qualified KATECB
 import qualified KATCBC
 import qualified KATXTS
 import qualified KATGCM
+import qualified KATOCB3
 
 toKatECB (k,p,c) = KAT_ECB { ecbKey = k, ecbPlaintext = p, ecbCiphertext = c }
 toKatCBC (k,iv,p,c) = KAT_CBC { cbcKey = k, cbcIV = iv, cbcPlaintext = p, cbcCiphertext = c }
 toKatXTS (k1,k2,iv,p,_,c) = KAT_XTS { xtsKey1 = k1, xtsKey2 = k2, xtsIV = iv, xtsPlaintext = p, xtsCiphertext = c }
-toKatGCM (k,iv,h,p,c,taglen,tag) =
-    KAT_AEAD { aeadMode       = AEAD_GCM
+toKatAEAD mode (k,iv,h,p,c,taglen,tag) =
+    KAT_AEAD { aeadMode       = mode
              , aeadKey        = k
              , aeadIV         = iv
              , aeadHeader     = h
@@ -35,6 +36,8 @@ toKatGCM (k,iv,h,p,c,taglen,tag) =
              , aeadTaglen     = taglen
              , aeadTag        = AuthTag tag
              }
+toKatGCM = toKatAEAD AEAD_GCM
+toKatOCB = toKatAEAD AEAD_OCB
 
 kats128 = defaultKATs
     { kat_ECB  = map toKatECB KATECB.vectors_aes128_enc
@@ -46,7 +49,8 @@ kats128 = defaultKATs
                            }
                  ]
     , kat_XTS  = map toKatXTS KATXTS.vectors_aes128_enc
-    , kat_AEAD = map toKatGCM KATGCM.vectors_aes128_enc
+    , kat_AEAD = map toKatGCM KATGCM.vectors_aes128_enc ++
+                 map toKatOCB KATOCB3.vectors_aes128_enc
     }
 
 kats192 = defaultKATs
