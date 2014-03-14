@@ -1,5 +1,5 @@
 Name:                cipher-aes
-Version:             0.2.6
+Version:             0.2.7
 Description:
     Fast AES cipher implementation with advanced mode of operations.
     .
