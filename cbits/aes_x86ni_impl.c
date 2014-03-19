@@ -236,8 +236,8 @@ void SIZED(aes_ni_gcm_encrypt)(uint8_t *output, aes_gcm *gcm, aes_key *key, uint
 		case 15: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,0x80); break;
 		default: mask = _mm_setr_epi8(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15); break;
 		}
-		memset(&block.b, 0, 16);
-		memcpy(&block.b, input, part_block_len);
+		block128_zero(&block);
+		block128_copy_bytes(&block, input, part_block_len);
 
 		/* iv += 1 */
 		iv = _mm_add_epi64(iv, one);
