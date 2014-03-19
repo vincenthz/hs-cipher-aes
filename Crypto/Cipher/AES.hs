@@ -157,7 +157,7 @@ sizeGCM :: Int
 sizeGCM = 80
 
 sizeOCB :: Int
-sizeOCB = 96
+sizeOCB = 160
 
 keyToPtr :: AES -> (Ptr AES -> IO a) -> IO a
 keyToPtr (AES b) f = withSecureMemPtr b (f . castPtr)

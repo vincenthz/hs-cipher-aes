@@ -56,12 +56,13 @@ typedef struct {
 } aes_gcm;
 
 typedef struct {
-	block128 lstar;
-	block128 ldollar;
 	block128 offset_aad;
 	block128 offset_enc;
 	block128 sum_aad;
 	block128 sum_enc;
+	block128 lstar;
+	block128 ldollar;
+	block128 li[4];
 } aes_ocb;
 
 /* in bytes: either 16,24,32 */

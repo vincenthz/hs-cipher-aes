@@ -390,23 +390,30 @@ void aes_gcm_finish(uint8_t *tag, aes_gcm *gcm, aes_key *key)
 	}
 }
 
-static void ocb_block_double(block128 *output, block128 *input)
+static inline void ocb_block_double(block128 *d, block128 *s)
 {
 	unsigned int i;
-	uint8_t tmp = input->b[0];
+	uint8_t tmp = s->b[0];
 
-	if (output != input) block128_copy(output, input);
 	for (i=0; i<15; i++)
-		output->b[i] = (input->b[i] << 1) | (input->b[i+1] >> 7);
-	output->b[15] = (input->b[15] << 1) ^ ((tmp >> 7) * 0x87);
+		d->b[i] = (s->b[i] << 1) | (s->b[i+1] >> 7);
+	d->b[15] = (s->b[15] << 1) ^ ((tmp >> 7) * 0x87);
 }
 
-static void ocb_get_L_i(block128 *l, block128 *ldollar, unsigned int i)
+static void ocb_get_L_i(block128 *l, block128 *lis, unsigned int i)
 {
-	/* TODO optimise with a table. */
-	ocb_block_double(l, ldollar);
-	for ( ; (i&1) == 0; i >>= 1) /* double for each trailing 0 */
-		ocb_block_double(l, l);
+#define L_CACHED 4
+	i = bitfn_ntz(i);
+	if (i < L_CACHED) {
+		block128_copy(l, &lis[i]);
+	} else {
+		i -= (L_CACHED - 1);
+		block128_copy(l, &lis[L_CACHED - 1]);
+		while (i--) {
+			ocb_block_double(l, l);
+		}
+	}
+#undef L_CACHED
 }
 
 void aes_ocb_init(aes_ocb *ocb, aes_key *key, uint8_t *iv, uint32_t len)
@@ -420,10 +427,15 @@ void aes_ocb_init(aes_ocb *ocb, aes_key *key, uint8_t *iv, uint32_t len)
 		len = 15;
 	}
 
-	/* create L*, and L$ */
+	/* create L*, and L$,L0,L1,L2,L3 */
 	block128_zero(&tmp);
 	aes_encrypt_block(&ocb->lstar, key, &tmp);
+
 	ocb_block_double(&ocb->ldollar, &ocb->lstar);
+	ocb_block_double(&ocb->li[0], &ocb->ldollar);
+	ocb_block_double(&ocb->li[1], &ocb->li[0]);
+	ocb_block_double(&ocb->li[2], &ocb->li[1]);
+	ocb_block_double(&ocb->li[3], &ocb->li[2]);
 
 	/* create strech from the nonce */
 	block128_zero(&nonce);
@@ -434,6 +446,7 @@ void aes_ocb_init(aes_ocb *ocb, aes_key *key, uint8_t *iv, uint32_t len)
 	nonce.b[15] &= 0xC0;
 	aes_encrypt_block(&ktop, key, &nonce);
 	memcpy(stretch, ktop.b, 16);
+
 	memcpy(tmp.b, ktop.b + 1, 8);
 	block128_xor(&tmp, &ktop);
 	memcpy(stretch + 16, tmp.b, 8);
@@ -460,7 +473,7 @@ void aes_ocb_aad(aes_ocb *ocb, aes_key *key, uint8_t *input, uint32_t length)
 	unsigned int i;
 
 	for (i=1; i<= length/16; i++, input=input+16) {
-		ocb_get_L_i(&tmp, &ocb->ldollar, i);
+		ocb_get_L_i(&tmp, ocb->li, i);
 		block128_xor(&ocb->offset_aad, &tmp);
 
 		block128_vxor(&tmp, &ocb->offset_aad, (block128 *) input);
@@ -669,7 +682,7 @@ static int ocb_generic_crypt(uint8_t *output, aes_ocb *ocb, aes_key *key,
 
 	for (i = 1; i <= length/16; i++, input += 16, output += 16) {
 		/* Offset_i = Offset_{i-1} xor L_{ntz(i)} */
-		ocb_get_L_i(&tmp, &ocb->ldollar, i);
+		ocb_get_L_i(&tmp, ocb->li, i);
 		block128_xor(&ocb->offset_enc, &tmp);
 
 		block128_vxor(&tmp, &ocb->offset_enc, (block128 *) input);
