@@ -30,6 +30,10 @@ Extra-Source-Files:  Tests/*.hs
                      cbits/*.h
                      cbits/aes_x86ni_impl.c
 
+Flag support_aesni
+  Description:       allow compilation with AESNI on system and architecture that supports it
+  Default:           True
+
 Library
   Build-Depends:     base >= 4 && < 5
                    , bytestring
@@ -42,7 +46,7 @@ Library
                      cbits/aes.c
                      cbits/gf.c
                      cbits/cpu.c
-  if os(linux) && (arch(i386) || arch(x86_64))
+  if flag(support_aesni) && os(linux) && (arch(i386) || arch(x86_64))
     CC-options:      -mssse3 -maes -mpclmul -DWITH_AESNI
     C-sources:       cbits/aes_x86ni.c
 
