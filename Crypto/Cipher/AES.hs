@@ -197,7 +197,7 @@ initAES k
     | len == 16 = initWithRounds 10
     | len == 24 = initWithRounds 12
     | len == 32 = initWithRounds 14
-    | otherwise = error "AES: not a valid key length (valid=16,24,32)"
+    | otherwise = error $ "AES: not a valid key length (valid=16,24,32, supplied=" ++ (show len) ++ ")"
   where len = byteableLength k
         initWithRounds nbR = AES $ unsafeCreateSecureMem (16+2*2*16*nbR) aesInit
         aesInit ptr = withBytePtr k $ \ikey ->
