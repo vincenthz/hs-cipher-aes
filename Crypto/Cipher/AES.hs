@@ -17,6 +17,10 @@ module Crypto.Cipher.AES
     , AES192
     , AES256
 
+    -- * IV
+    , AESIV
+    , aesIV_
+
     -- * Authenticated encryption block cipher types
     , AESGCM
 
@@ -68,6 +72,16 @@ newtype AES192 = AES192 AES
 
 -- | AES with 256 bit key
 newtype AES256 = AES256 AES
+
+-- | AES IV is always 16 bytes
+newtype AESIV = AESIV ByteString
+    deriving (Show,Eq,Byteable)
+
+-- | convert a bytestring to an AESIV
+aesIV_ :: ByteString -> AESIV
+aesIV_ iv
+    | B.length iv /= 16 = error $ "AES error: IV length must be block size (16). Its length is: " ++ (show $ B.length iv)
+    | otherwise         = AESIV iv
 
 instance Cipher AES where
     cipherName    _ = "AES"
