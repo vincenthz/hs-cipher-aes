@@ -76,8 +76,8 @@ main = defaultMain
     , testBlockCipher kats192 (undefined :: AES.AES192)
     , testBlockCipher kats256 (undefined :: AES.AES256)
     , testProperty "genCtr" $ \(key, iv1) ->
-        let (iv2, bs1)    = AES.genCounter key iv1 32
-            (iv3, bs2)    = AES.genCounter key iv2 32
-            (iv3', bsAll) = AES.genCounter key iv1 64
+        let (bs1, iv2)    = AES.genCounter key iv1 32
+            (bs2, iv3)    = AES.genCounter key iv2 32
+            (bsAll, iv3') = AES.genCounter key iv1 64
          in (B.concat [bs1,bs2] == bsAll && iv3 == iv3')
     ]

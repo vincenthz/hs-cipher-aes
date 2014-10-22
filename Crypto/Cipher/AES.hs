@@ -279,14 +279,14 @@ genCTR ctx iv len
 genCounter :: AES
            -> AESIV
            -> Int
-           -> (AESIV, ByteString)
+           -> (ByteString, AESIV)
 genCounter ctx iv len
-    | len <= 0  = (iv, B.empty)
+    | len <= 0  = (B.empty, iv)
     | otherwise = unsafePerformIO $ do
         fptr  <- B.mallocByteString outputLength
-        newIv <- withForeignPtr fptr $ \output -> generate output
+        newIv <- withForeignPtr fptr generate
         let !out = B.PS fptr 0 outputLength
-        return $! (out `seq` newIv `seq` (newIv, out))
+        return $! (out `seq` newIv `seq` (out, newIv))
   where generate o = keyToPtr ctx $ \k -> ivCopyPtr iv $ \i ->
             c_aes_gen_ctr_cont (castPtr o) k i (fromIntegral nbBlocks)
         (nbBlocks',r) = len `quotRem` 16
