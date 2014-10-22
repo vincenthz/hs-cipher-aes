@@ -274,6 +274,21 @@ void aes_gen_ctr(aes_block *output, aes_key *key, const aes_block *iv, uint32_t 
 	}
 }
 
+void aes_gen_ctr_cont(aes_block *output, aes_key *key, aes_block *iv, uint32_t nb_blocks)
+{
+	aes_block block;
+
+	/* preload IV in block */
+	block128_copy(&block, iv);
+
+	for ( ; nb_blocks-- > 0; output++, block128_inc_be(&block)) {
+		aes_encrypt_block(output, key, &block);
+	}
+
+	/* copy back the IV */
+	block128_copy(iv, &block);
+}
+
 void aes_encrypt_ctr(uint8_t *output, aes_key *key, aes_block *iv, uint8_t *input, uint32_t len)
 {
 	ctr_f e = GET_CTR_ENCRYPT(key->strength);

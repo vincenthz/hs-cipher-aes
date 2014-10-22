@@ -78,6 +78,7 @@ void aes_encrypt_cbc(aes_block *output, aes_key *key, aes_block *iv, aes_block *
 void aes_decrypt_cbc(aes_block *output, aes_key *key, aes_block *iv, aes_block *input, uint32_t nb_blocks);
 
 void aes_gen_ctr(aes_block *output, aes_key *key, const aes_block *iv, uint32_t nb_blocks);
+void aes_gen_ctr_cont(aes_block *output, aes_key *key, aes_block *iv, uint32_t nb_blocks);
 
 void aes_encrypt_xts(aes_block *output, aes_key *key, aes_key *key2, aes_block *sector,
                      uint32_t spoint, aes_block *input, uint32_t nb_blocks);

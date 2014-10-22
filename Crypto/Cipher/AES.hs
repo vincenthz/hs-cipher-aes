@@ -1,6 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- |
@@ -31,6 +32,7 @@ module Crypto.Cipher.AES
 
     -- * misc
     , genCTR
+    , genCounter
 
     -- * encryption
     , encryptECB
@@ -51,12 +53,14 @@ module Crypto.Cipher.AES
 
 import Data.Word
 import Foreign.Ptr
+import Foreign.ForeignPtr
 import Foreign.C.Types
 import Foreign.C.String
 import Data.ByteString.Internal
 import Data.ByteString.Unsafe
 import Data.Byteable
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Internal as B (ByteString(PS), mallocByteString, memcpy)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Crypto.Cipher.Types
@@ -180,6 +184,13 @@ keyToPtr (AES b) f = withSecureMemPtr b (f . castPtr)
 ivToPtr :: Byteable iv => iv -> (Ptr Word8 -> IO a) -> IO a
 ivToPtr iv f = withBytePtr iv (f . castPtr)
 
+ivCopyPtr :: AESIV -> (Ptr Word8 -> IO ()) -> IO AESIV
+ivCopyPtr (AESIV iv) f = do
+    newIV <- create 16 $ \newPtr -> do
+                withBytePtr iv $ \ivPtr -> B.memcpy newPtr ivPtr 16
+    withBytePtr newIV $ f
+    return $! AESIV newIV
+
 withKeyAndIV :: Byteable iv => AES -> iv -> (Ptr AES -> Ptr Word8 -> IO a) -> IO a
 withKeyAndIV ctx iv f = keyToPtr ctx $ \kptr -> ivToPtr iv $ \ivp -> f kptr ivp
 
@@ -255,6 +266,36 @@ genCTR ctx iv len
   where generate o = withKeyAndIV ctx iv $ \k i -> c_aes_gen_ctr (castPtr o) k i (fromIntegral nbBlocks)
         (nbBlocks',r) = len `quotRem` 16
         nbBlocks = if r == 0 then nbBlocks' else nbBlocks' + 1
+
+-- | generate a counter mode pad. this is generally xor-ed to an input
+-- to make the standard counter mode block operations.
+--
+-- if the length requested is not a multiple of the block cipher size,
+-- more data will be returned, so that the returned bytestring is
+-- a multiple of the block cipher size.
+--
+-- Similiar to 'genCTR' but also return the next IV for continuation
+{-# NOINLINE genCounter #-}
+genCounter :: AES
+           -> AESIV
+           -> Int
+           -> (AESIV, ByteString)
+genCounter ctx iv len
+    | len <= 0  = (iv, B.empty)
+    | otherwise = unsafePerformIO $ do
+        fptr  <- B.mallocByteString outputLength
+        newIv <- withForeignPtr fptr $ \output -> generate output
+        let !out = B.PS fptr 0 outputLength
+        return $! (out `seq` newIv `seq` (newIv, out))
+  where generate o = keyToPtr ctx $ \k -> ivCopyPtr iv $ \i ->
+            c_aes_gen_ctr_cont (castPtr o) k i (fromIntegral nbBlocks)
+        (nbBlocks',r) = len `quotRem` 16
+        nbBlocks = if r == 0 then nbBlocks' else nbBlocks' + 1
+        outputLength = nbBlocks * 16
+
+{- TODO: when genCTR has same AESIV requirements for IV, add the following rules:
+ - RULES "snd . genCounter" forall ctx iv len .  snd (genCounter ctx iv len) = genCTR ctx iv len
+ -}
 
 -- | encrypt using Counter mode (CTR)
 --
@@ -573,6 +614,9 @@ foreign import ccall "aes.h aes_decrypt_xts"
 ------------------------------------------------------------------------
 foreign import ccall "aes.h aes_gen_ctr"
     c_aes_gen_ctr :: CString -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
+
+foreign import ccall "aes.h aes_gen_ctr_cont"
+    c_aes_gen_ctr_cont :: CString -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_encrypt_ctr"
     c_aes_encrypt_ctr :: CString -> Ptr AES -> Ptr Word8 -> CString -> CUInt -> IO ()
