@@ -674,8 +674,8 @@ void aes_generic_gcm_decrypt(uint8_t *output, aes_gcm *gcm, aes_key *key, uint8_
 	}
 }
 
-static int ocb_generic_crypt(uint8_t *output, aes_ocb *ocb, aes_key *key,
-                             uint8_t *input, uint32_t length, int encrypt)
+static void ocb_generic_crypt(uint8_t *output, aes_ocb *ocb, aes_key *key,
+                              uint8_t *input, uint32_t length, int encrypt)
 {
 	block128 tmp, pad;
 	unsigned int i;
