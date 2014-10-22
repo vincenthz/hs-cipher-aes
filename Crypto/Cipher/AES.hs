@@ -231,7 +231,7 @@ encryptECB = doECB c_aes_encrypt_ecb
 {-# NOINLINE encryptCBC #-}
 encryptCBC :: Byteable iv
            => AES        -- ^ AES Context
-           -> iv         -- ^ Initial vector
+           -> iv         -- ^ Initial vector of AES block size
            -> ByteString -- ^ plaintext
            -> ByteString -- ^ ciphertext
 encryptCBC = doCBC c_aes_encrypt_cbc
@@ -250,6 +250,7 @@ genCTR :: Byteable iv
        -> ByteString
 genCTR ctx iv len
     | len <= 0  = B.empty
+    | byteableLength iv /= 16 = error $ "AES error: IV length must be block size (16). Its length is: " ++ (show $ byteableLength iv)
     | otherwise = unsafeCreate (nbBlocks * 16) generate
   where generate o = withKeyAndIV ctx iv $ \k i -> c_aes_gen_ctr (castPtr o) k i (fromIntegral nbBlocks)
         (nbBlocks',r) = len `quotRem` 16
@@ -261,11 +262,12 @@ genCTR ctx iv len
 {-# NOINLINE encryptCTR #-}
 encryptCTR :: Byteable iv
            => AES        -- ^ AES Context
-           -> iv         -- ^ initial vector, usually representing a 128 bit integer
+           -> iv         -- ^ initial vector of AES block size (usually representing a 128 bit integer)
            -> ByteString -- ^ plaintext input
            -> ByteString -- ^ ciphertext output
 encryptCTR ctx iv input
     | len <= 0  = B.empty
+    | byteableLength iv /= 16 = error $ "AES error: IV length must be block size (16). Its length is: " ++ (show $ byteableLength iv)
     | otherwise = unsafeCreate len doEncrypt
   where doEncrypt o = withKeyAndIV ctx iv $ \k v -> unsafeUseAsCString input $ \i ->
                       c_aes_encrypt_ctr (castPtr o) k v i (fromIntegral len)
@@ -377,6 +379,7 @@ doCBC :: Byteable iv
       -> AES -> iv -> ByteString -> ByteString
 doCBC f ctx iv input
     | len == 0  = B.empty
+    | byteableLength iv /= 16 = error $ "AES error: IV length must be block size (16). Its length is: " ++ (show $ byteableLength iv)
     | r /= 0    = error $ "Encryption error: input length must be a multiple of block size (16). Its length is: " ++ (show len)
     | otherwise = unsafeCreate len $ \o ->
                   withKeyAndIV ctx iv $ \k v ->
