@@ -46,7 +46,7 @@ static inline void block128_copy_bytes(block128 *block, uint8_t *src, uint32_t l
 	for (i = 0; i < len; i++) block->b[i] = src[i];
 }
 
-static inline void block128_copy(block128 *d, block128 *s)
+static inline void block128_copy(block128 *d, const block128 *s)
 {
 	d->q[0] = s->q[0]; d->q[1] = s->q[1];
 }
@@ -56,13 +56,13 @@ static inline void block128_zero(block128 *d)
 	d->q[0] = 0; d->q[1] = 0;
 }
 
-static inline void block128_xor(block128 *d, block128 *s)
+static inline void block128_xor(block128 *d, const block128 *s)
 {
 	d->q[0] ^= s->q[0];
 	d->q[1] ^= s->q[1];
 }
 
-static inline void block128_vxor(block128 *d, block128 *s1, block128 *s2)
+static inline void block128_vxor(block128 *d, const block128 *s1, const block128 *s2)
 {
 	d->q[0] = s1->q[0] ^ s2->q[0];
 	d->q[1] = s1->q[1] ^ s2->q[1];

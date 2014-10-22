@@ -262,7 +262,7 @@ void aes_decrypt_cbc(aes_block *output, aes_key *key, aes_block *iv, aes_block *
 	d(output, key, iv, input, nb_blocks);
 }
 
-void aes_gen_ctr(aes_block *output, aes_key *key, aes_block *iv, uint32_t nb_blocks)
+void aes_gen_ctr(aes_block *output, aes_key *key, const aes_block *iv, uint32_t nb_blocks)
 {
 	aes_block block;
 
