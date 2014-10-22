@@ -46,7 +46,7 @@ Library
                      cbits/aes.c
                      cbits/gf.c
                      cbits/cpu.c
-  if flag(support_aesni) && os(linux) && (arch(i386) || arch(x86_64))
+  if flag(support_aesni) && (os(linux) || os(freebsd)) && (arch(i386) || arch(x86_64))
     CC-options:      -mssse3 -maes -mpclmul -DWITH_AESNI
     C-sources:       cbits/aes_x86ni.c
 
