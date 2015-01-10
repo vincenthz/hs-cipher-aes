@@ -617,7 +617,7 @@ foreign import ccall "aes.h aes_decrypt_xts"
 foreign import ccall "aes.h aes_gen_ctr"
     c_aes_gen_ctr :: CString -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
 
-foreign import ccall "aes.h aes_gen_ctr_cont"
+foreign import ccall unsafe "aes.h aes_gen_ctr_cont"
     c_aes_gen_ctr_cont :: CString -> Ptr AES -> Ptr Word8 -> CUInt -> IO ()
 
 foreign import ccall "aes.h aes_encrypt_ctr"
