@@ -169,7 +169,7 @@ typedef void (*block_f)(aes_block *output, aes_key *key, aes_block *input);
 #define aes_decrypt_block(o,k,i) \
 	(((block_f) (branch_table[DECRYPT_BLOCK_128 + k->strength]))(o,k,i))
 #else
-#define GET_INIT(strenght) aes_generic_init
+#define GET_INIT(strength) aes_generic_init
 #define GET_ECB_ENCRYPT(strength) aes_generic_encrypt_ecb
 #define GET_ECB_DECRYPT(strength) aes_generic_decrypt_ecb
 #define GET_CBC_ENCRYPT(strength) aes_generic_encrypt_cbc
