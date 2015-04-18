@@ -69,6 +69,7 @@ kats256 = defaultKATs
     { kat_ECB  = map toKatECB KATECB.vectors_aes256_enc
     , kat_CBC  = map toKatCBC KATCBC.vectors_aes256_enc
     , kat_XTS  = map toKatXTS KATXTS.vectors_aes256_enc
+    , kat_AEAD = map toKatGCM KATGCM.vectors_aes256_enc
     }
 
 main = defaultMain
