@@ -243,6 +243,7 @@ decryptGCM = doGCM gcmAppendDecrypt
 doECB :: (Ptr b -> Ptr AES -> CString -> CUInt -> IO ())
       -> AES -> ByteString -> ByteString
 doECB f ctx input
+    | len == 0  = B.empty
     | r /= 0    = error "cannot use with non multiple of block size"
     | otherwise = unsafeCreate len $ \o ->
                   keyToPtr ctx $ \k ->
