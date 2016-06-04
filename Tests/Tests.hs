@@ -5,13 +5,11 @@ module Main where
 import Control.Applicative
 import Control.Monad
 
-import Test.Framework (Test, defaultMain, testGroup)
+import Test.Framework (defaultMain)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 import Test.QuickCheck
-import Test.QuickCheck.Test
 
-import Data.Byteable
 import qualified Data.ByteString as B
 import qualified Crypto.Cipher.AES as AES
 import Crypto.Cipher.Types
