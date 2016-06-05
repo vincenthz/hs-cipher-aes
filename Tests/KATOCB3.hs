@@ -7,6 +7,8 @@ import Data.ByteString.Char8 ()
 -- (key, iv, aad, input, out, taglen, tag)
 type KATOCB3 = (B.ByteString, B.ByteString, B.ByteString, B.ByteString, B.ByteString, Int, B.ByteString)
 
+
+key1, nonce1 :: B.ByteString
 key1   = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 nonce1 = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b"
 
@@ -45,8 +47,10 @@ vectors_aes128_enc =
       , "\x77\x6c\x99\x24\xd6\x72\x3a\x1f\xc4\x52\x45\x32\xac\x3e\x5b\xeb")
     ]
 
+vectors_encrypt :: [(String, [KATOCB3])]
 vectors_encrypt =
     [ ("AES128 Enc", vectors_aes128_enc)
     ]
 
+vectors_decrypt :: [a]
 vectors_decrypt = []

@@ -85,9 +85,11 @@ vectors_aes256_enc =
         )
     ]
 
+vectors_encrypt :: [(String, [KATGCM])]
 vectors_encrypt =
     [ ("AES128 Enc", vectors_aes128_enc)
     , ("AES256 Enc", vectors_aes256_enc)
     ]
 
+vectors_decrypt :: [a]
 vectors_decrypt = []

@@ -1,17 +1,16 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Main where
 
 import Control.Applicative
 import Control.Monad
 
-import Test.Framework (Test, defaultMain, testGroup)
+import Test.Framework (defaultMain)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 import Test.QuickCheck
-import Test.QuickCheck.Test
 
-import Data.Byteable
 import qualified Data.ByteString as B
 import qualified Crypto.Cipher.AES as AES
 import Crypto.Cipher.Types
@@ -30,9 +29,18 @@ instance Arbitrary AES.AESIV where
 instance Arbitrary AES.AES where
     arbitrary = AES.initAES . B.pack <$> replicateM 16 arbitrary
 
+toKatECB :: (B.ByteString, B.ByteString, B.ByteString) -> KAT_ECB
 toKatECB (k,p,c) = KAT_ECB { ecbKey = k, ecbPlaintext = p, ecbCiphertext = c }
+
+toKatCBC :: (B.ByteString, B.ByteString, B.ByteString, B.ByteString) -> KAT_CBC
 toKatCBC (k,iv,p,c) = KAT_CBC { cbcKey = k, cbcIV = iv, cbcPlaintext = p, cbcCiphertext = c }
+
+toKatXTS :: (B.ByteString, B.ByteString, B.ByteString, B.ByteString, t,  B.ByteString) -> KAT_XTS
 toKatXTS (k1,k2,iv,p,_,c) = KAT_XTS { xtsKey1 = k1, xtsKey2 = k2, xtsIV = iv, xtsPlaintext = p, xtsCiphertext = c }
+
+toKatAEAD :: AEADMode
+            -> (B.ByteString, B.ByteString, B.ByteString, B.ByteString, B.ByteString, Int, B.ByteString)
+            -> KAT_AEAD
 toKatAEAD mode (k,iv,h,p,c,taglen,tag) =
     KAT_AEAD { aeadMode       = mode
              , aeadKey        = k
@@ -43,9 +51,14 @@ toKatAEAD mode (k,iv,h,p,c,taglen,tag) =
              , aeadTaglen     = taglen
              , aeadTag        = AuthTag tag
              }
+
+toKatGCM :: (B.ByteString, B.ByteString, B.ByteString, B.ByteString, B.ByteString, Int, B.ByteString) -> KAT_AEAD
 toKatGCM = toKatAEAD AEAD_GCM
+
+toKatOCB :: (B.ByteString, B.ByteString, B.ByteString, B.ByteString, B.ByteString, Int, B.ByteString) -> KAT_AEAD
 toKatOCB = toKatAEAD AEAD_OCB
 
+kats128 :: KATs
 kats128 = defaultKATs
     { kat_ECB  = map toKatECB KATECB.vectors_aes128_enc
     , kat_CBC  = map toKatCBC KATCBC.vectors_aes128_enc
@@ -60,11 +73,13 @@ kats128 = defaultKATs
                  map toKatOCB KATOCB3.vectors_aes128_enc
     }
 
+kats192 :: KATs
 kats192 = defaultKATs
     { kat_ECB  = map toKatECB KATECB.vectors_aes192_enc
     , kat_CBC  = map toKatCBC KATCBC.vectors_aes192_enc
     }
 
+kats256 :: KATs
 kats256 = defaultKATs
     { kat_ECB  = map toKatECB KATECB.vectors_aes256_enc
     , kat_CBC  = map toKatCBC KATCBC.vectors_aes256_enc
@@ -72,6 +87,7 @@ kats256 = defaultKATs
     , kat_AEAD = map toKatGCM KATGCM.vectors_aes256_enc
     }
 
+main :: IO ()
 main = defaultMain
     [ testBlockCipher kats128 (undefined :: AES.AES128)
     , testBlockCipher kats192 (undefined :: AES.AES192)
