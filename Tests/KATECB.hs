@@ -2,6 +2,7 @@ module KATECB where
 
 import qualified Data.ByteString as B
 
+vectors_aes128_enc :: [(B.ByteString, B.ByteString, B.ByteString)]
 vectors_aes128_enc =
     [
       ( B.pack [0x10, 0xa5, 0x88, 0x69, 0xd7, 0x4b, 0xe5, 0xa3,0x74,0xcf,0x86,0x7c,0xfb,0x47,0x38,0x59]
@@ -30,6 +31,7 @@ vectors_aes128_enc =
       )
     ]
 
+vectors_aes192_enc :: [(B.ByteString, B.ByteString, B.ByteString)]
 vectors_aes192_enc =
     [
       ( B.replicate 24 0
@@ -54,6 +56,7 @@ vectors_aes192_enc =
       )
     ]
 
+vectors_aes256_enc :: [(B.ByteString, B.ByteString, B.ByteString)]
 vectors_aes256_enc =
     [ ( B.replicate 32 0
       , B.replicate 16 0
@@ -77,6 +80,7 @@ vectors_aes256_enc =
       )
     ]
 
+vectors_aes128_dec :: [(B.ByteString, B.ByteString, B.ByteString)]
 vectors_aes128_dec =
     [ ( B.replicate 16 0
       , B.replicate 16 0
@@ -100,6 +104,7 @@ vectors_aes128_dec =
       )
     ]
 
+vectors_aes192_dec :: [(B.ByteString, B.ByteString, B.ByteString)]
 vectors_aes192_dec =
     [
       ( B.replicate 24 0
@@ -124,6 +129,7 @@ vectors_aes192_dec =
       )
     ]
 
+vectors_aes256_dec :: [(B.ByteString, B.ByteString, B.ByteString)]
 vectors_aes256_dec =
     [ ( B.replicate 32 0
       , B.replicate 16 0
@@ -147,12 +153,14 @@ vectors_aes256_dec =
       )
     ]
 
+vectors_encrypt :: [(String, [(B.ByteString, B.ByteString, B.ByteString)])]
 vectors_encrypt =
     [ ("AES 128 Enc", vectors_aes128_enc)
     , ("AES 192 Enc", vectors_aes192_enc)
     , ("AES 256 Enc", vectors_aes256_enc)
     ]
 
+vectors_decrypt :: [(String, [(B.ByteString, B.ByteString, B.ByteString)])]
 vectors_decrypt =
     [ ("AES 128 Dec", vectors_aes128_dec)
     , ("AES 192 Dec", vectors_aes192_dec)

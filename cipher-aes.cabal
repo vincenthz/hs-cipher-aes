@@ -53,6 +53,7 @@ Library
 Test-Suite test-cipher-aes
   type:              exitcode-stdio-1.0
   hs-source-dirs:    Tests
+  ghc-options:       -Wall -fwarn-tabs
   Main-Is:           Tests.hs
   Build-depends:     base >= 4 && < 5
                    , cipher-aes
