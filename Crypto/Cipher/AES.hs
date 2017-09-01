@@ -274,7 +274,7 @@ genCTR ctx iv len
 -- more data will be returned, so that the returned bytestring is
 -- a multiple of the block cipher size.
 --
--- Similiar to 'genCTR' but also return the next IV for continuation
+-- Similar to 'genCTR' but also return the next IV for continuation
 {-# NOINLINE genCounter #-}
 genCounter :: AES
            -> AESIV
