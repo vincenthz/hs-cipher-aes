@@ -15,7 +15,7 @@ Description:
     one (openssl, gnutls) also uses similar implementation. If it matters for your
     case, you should make sure you have AES-NI available, or you'll need to use a different
     implementation.
-    .
+
 License:             BSD3
 License-file:        LICENSE
 Copyright:           Vincent Hanquez <vincent@snarc.org>
